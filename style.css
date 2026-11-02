@@ -662,6 +662,35 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   .range.dragging .knob, .tg:active .sw::after { background: var(--knob); }
 }
 
+/* 同一平面上の原子の輪 */
+.labels .ring {
+  position: absolute; left: 0; top: 0; border-radius: 50%; pointer-events: none;
+  border: 2.5px solid var(--c); box-shadow: 0 0 0 1.5px rgba(255,255,255,.85), 0 0 14px var(--c), inset 0 0 10px color-mix(in srgb, var(--c) 45%, transparent);
+  animation: ring-in .25s var(--snap);
+}
+@keyframes ring-in { from { opacity: 0; scale: .7; } }
+.onplane { color: var(--c); font-weight: 700; }
+
+.sheet-btn { display: none; }
+
+/* ===== ホーム画面に追加 ===== */
+.install-btn[hidden] { display: none !important; }
+.sidebar .install-btn { width: 100%; margin-top: 6px; }
+.install-sheet {
+  position: fixed; z-index: 70; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; width: min(420px, calc(100vw - 20px));
+  border-radius: 34px; background: var(--glass-strong); padding: 22px 22px 18px; animation: sheet-up .3s var(--snap);
+}
+.install-sheet.closing { animation: sheet-down .2s ease-in forwards; }
+@keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } }
+@keyframes sheet-down { to { transform: translateY(40px); opacity: 0; } }
+.install-sheet h2 { margin: 0 0 4px; font: 700 20px/1.25 var(--font-display); display: flex; align-items: center; gap: 12px; }
+.install-sheet h2 img { width: 44px; height: 44px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.install-sheet ol { margin: 14px 0 16px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; counter-reset: st; }
+.install-sheet li { display: flex; align-items: center; gap: 12px; font-size: 15px; counter-increment: st; }
+.install-sheet li::before { content: counter(st); width: 28px; height: 28px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--fill3); font-weight: 700; font-size: 14px; }
+.install-sheet li svg { width: 22px; height: 22px; color: var(--blue); flex: none; display: inline-block; vertical-align: -5px; }
+.install-sheet .btn { width: 100%; }
+
 /* ===== Mac アプリ（Electron） ===== */
 .drag-strip { display: none; }
 .app .drag-strip { display: block; position: fixed; z-index: 9; left: 0; right: 0; top: 0; height: 52px; -webkit-app-region: drag; }
@@ -692,36 +721,53 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   .toasts { top: calc(var(--gap) + 64px); }
 }
 @media (max-width: 760px) {
-  /* iPhone：下から引き出すシート（端から少し浮かせ、四隅を丸める）。検索はシートの上端 */
-  :root { --gap: 10px; --insp-w: 0px; --right: var(--gap); --sheet: 50vh; --sheet-min: 148px; }
-  .viewer, .labels { left: 0; bottom: calc(var(--sheet) - 40px); }
-  .edge-top { left: 0; right: 0; height: 200px; }
-  .empty { padding: 0 24px var(--sheet); }
-  .loading { left: 50%; top: calc((100vh - var(--sheet)) / 2); }
-  .toolbar { top: var(--gap); right: var(--gap); }
+  /* iPhone：下から引き出すシート（端から少し浮かせ、四隅を丸める）。検索はシートの上端。
+     シートは「開く／小さく／隠す」の 3 段階。--sh が今の高さ */
+  :root {
+    --gap: 10px; --insp-w: 0px; --right: var(--gap); --sheet: 50vh; --sheet-min: 148px;
+    --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px);
+    --sh: calc(var(--sheet) + var(--safe-b));
+  }
+  body.sheet-min { --sh: calc(var(--sheet-min) + var(--safe-b)); }
+  body.sheet-hidden { --sh: 0px; }
+  .viewer, .labels { left: 0; bottom: max(76px, calc(var(--sh) - 40px)); transition: bottom .25s var(--snap); }
+  .edge-top { left: 0; right: 0; height: calc(200px + var(--safe-t)); }
+  .empty { padding: 0 24px var(--sh); }
+  .loading { left: 50%; top: calc((100vh - var(--sh)) / 2); }
+  .toolbar { top: calc(var(--gap) + var(--safe-t)); right: var(--gap); }
   .toolbar .capsule:first-child { display: none; }
-  .titlebar { top: calc(var(--gap) + 6px); left: 18px; right: 120px; }
+  .titlebar { top: calc(var(--gap) + 6px + var(--safe-t)); left: 18px; right: 120px; }
   .large-title { font-size: 30px; } .large-title.long { font-size: 24px; } .large-title.xlong { font-size: 19px; }
   .elements, .source { display: none; }
   .inspector {
-    left: 8px; right: 8px; bottom: 8px; top: auto; width: auto; height: var(--sheet);
-    border-radius: 38px; padding-top: 70px; transition: height .22s var(--spring);
+    left: 8px; right: 8px; bottom: calc(8px + var(--safe-b)); top: auto; width: auto; height: var(--sheet);
+    border-radius: 38px; padding-top: 70px; transition: height .25s var(--snap), transform .3s var(--snap), opacity .2s;
+    touch-action: pan-y;
   }
   .inspector.min { height: var(--sheet-min); }
-  .grabber { display: block; position: absolute !important; top: 0; left: 0; right: 0; width: 100%; height: 18px; border: 0; background: transparent; }
+  body.sheet-hidden .inspector { transform: translateY(calc(100% + 40px)); opacity: 0; pointer-events: none; }
+  .grabber { display: block; position: absolute !important; top: 0; left: 0; right: 0; width: 100%; height: 26px; border: 0; background: transparent; touch-action: none; }
   .grabber::before { content: ""; position: absolute; left: 50%; top: 7px; width: 38px; height: 5px; border-radius: 999px; background: var(--label3); transform: translateX(-50%); }
   .search {
-    left: 22px; right: 22px; width: auto; top: auto; bottom: calc(8px + var(--sheet) - 64px); padding: 0; background: none; box-shadow: none;
-    -webkit-backdrop-filter: none; backdrop-filter: none; transition: bottom .22s var(--spring);
+    left: 22px; right: 22px; width: auto; top: auto; bottom: calc(8px + var(--sh) - 64px); padding: 0; background: none; box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none; transition: bottom .25s var(--snap), opacity .2s;
   }
-  body.sheet-min .search { bottom: calc(8px + var(--sheet-min) - 64px); }
+  body.sheet-hidden .search { opacity: 0; pointer-events: none; }
   .field { height: 44px; }
   .menu-btn { display: none; }
-  .cands { left: 8px; right: 8px; width: auto; top: auto; bottom: calc(8px + var(--sheet) + 8px); max-height: 40vh; }
+  .cands { left: 8px; right: 8px; width: auto; top: auto; bottom: calc(8px + var(--sh) + 8px); max-height: 40vh; }
+  body.sheet-hidden .cands { display: none; }
   .tabs { margin: 0 12px; }
-  .panes { padding: 2px 14px calc(28px + env(safe-area-inset-bottom)); }
-  .modebar { bottom: calc(8px + var(--sheet) + 10px); }
-  body.sheet-min .modebar { bottom: calc(8px + var(--sheet-min) + 10px); }
-  .modebar button { min-width: 62px; padding: 6px 12px 5px; }
-  .toasts { left: var(--gap); right: var(--gap); top: calc(var(--gap) + 60px); }
+  .panes { padding: 2px 14px 28px; }
+  .modebar { bottom: max(calc(14px + var(--safe-b)), calc(8px + var(--sh) + 10px)); left: 12px; right: 76px; transition: bottom .25s var(--snap); }
+  .modebar button { min-width: 0; flex: 1; padding: 6px 8px 5px; }
+  /* タブバーの右に、シートを隠す／出す丸いボタン（iOS の検索タブと同じ配置） */
+  .sheet-btn {
+    display: grid; place-items: center; right: 12px; width: 56px; height: 56px; border: 0; border-radius: 50%; color: var(--label);
+    bottom: max(calc(14px + var(--safe-b)), calc(8px + var(--sh) + 10px)); transition: bottom .25s var(--snap);
+  }
+  .sheet-btn svg { width: 24px; height: 24px; stroke-width: 2.2; transition: transform .25s var(--snap); }
+  body.sheet-hidden .sheet-btn svg { transform: rotate(180deg); }
+  .toasts { left: var(--gap); right: var(--gap); top: calc(var(--gap) + 60px + var(--safe-t)); }
+}
 }

@@ -13,6 +13,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Molecule">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="style.css">
 <script>
   // Mac アプリ（Electron）として開いたときは、ウインドウの枠を内容に合わせる
@@ -67,6 +68,9 @@
     <symbol id="i-circle-half" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.6 6.4 7 7-4.4.6-6.4 2.6-7 7-.6-4.4-2.6-6.4-7-7 4.4-.6 6.4-2.6 7-7z"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9.5 5.5 6.5 6.5-6.5 6.5"/></symbol>
+    <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6 9.5 6 6 6-6"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3.5v11M8 7.5l4-4 4 4"/><path d="M8.5 10.5H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1.5"/></symbol>
+    <symbol id="i-addhome" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M12 8.5v7M8.5 12h7"/></symbol>
     <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9 4.5v15"/></symbol>
   </defs>
 </svg>
@@ -125,6 +129,7 @@
       <button class="chipbtn" id="themeBtn" type="button"><svg><use href="#i-circle-half"/></svg><span>自動</span></button>
       <button class="chipbtn" id="glassBtn" type="button"><svg><use href="#i-sparkle"/></svg><span>屈折</span></button>
     </div>
+    <button class="chipbtn install-btn" type="button" hidden><svg><use href="#i-addhome"/></svg><span>ホーム画面に追加</span></button>
   </div>
 </aside>
 
@@ -257,6 +262,10 @@
         <button class="btn filled" type="button" id="planeMake" disabled>平面を作成</button>
         <button class="btn gray" type="button" id="planeSelClear">選択解除</button>
       </div>
+      <div class="group">
+        <label class="row tg"><span>同一平面上の原子を強調</span><input type="checkbox" id="tPlaneMark" checked><span class="sw"></span></label>
+      </div>
+      <p class="footnote">平面からの距離 |d| が 0.005 Å 以下（座標の丸め誤差の範囲）の原子を、厳密に同一平面上とみなして平面と同じ色の輪で囲みます。</p>
       <div class="chips" id="planeSel"></div>
       <div class="list" id="planeList"></div>
       <div class="group sliders"><div id="planeOpacityRow"></div></div>
@@ -289,6 +298,8 @@
 
     <!-- 情報 -->
     <div class="pane" data-pane="info">
+      <div class="btnrow"><button class="btn filled install-btn" type="button" hidden><svg><use href="#i-addhome"/></svg>ホーム画面に追加</button></div>
+      <h3>化合物</h3>
       <div class="group"><dl class="info" id="info"><dt>—</dt><dd></dd></dl></div>
       <p class="footnote">構造: <a href="https://pubchem.ncbi.nlm.nih.gov/" target="_blank" rel="noopener">PubChem</a> ／ 和名: <a href="https://www.wikidata.org/" target="_blank" rel="noopener">Wikidata</a> ／ 立体化学・配座・MMFF94s: <a href="https://github.com/cheminfo/openchemlib-js" target="_blank" rel="noopener">OpenChemLib</a> ／ 描画: 3Dmol.js</p>
     </div>
@@ -302,6 +313,7 @@
   <button type="button" data-click="plane"><svg><use href="#i-plane"/></svg><span>平面</span></button>
   <button type="button" data-click="build"><svg><use href="#i-hammer"/></svg><span>作成</span></button>
 </div>
+<button class="glass sheet-btn" id="sheetBtn" data-glass="sheetbtn" type="button" aria-label="パネルを隠す"><svg><use href="#i-chev-down"/></svg></button>
 
 <div class="toasts" id="toasts"></div>
 </body>

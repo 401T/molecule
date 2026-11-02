@@ -6,6 +6,9 @@ const WD = 'https://www.wikidata.org/w/api.php';
 const PROPS = 'Title,IUPACName,MolecularFormula,MolecularWeight,ExactMass,SMILES,InChIKey,Charge,XLogP';
 const FF_NAME = 'MMFF94s';
 const SYM_TOL = 0.2;          // 対称判定の許容誤差 [Å]
+// 「厳密に同一平面上」とみなす距離 [Å]。座標の丸め誤差（PubChem は小数 4 桁）だけを許す
+const PLANE_EXACT = 0.005;
+const PLANE_NEAR = 0.1;
 const PLANE_COLORS = ['#7b4fd0', '#e0702f', '#1f9e89', '#d6336c', '#3b7dd8', '#b5a000'];
 
 const ELEMENTS = new Set(('H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr ' +
@@ -32,7 +35,7 @@ const SLIDERS = [
 ];
 const DEFAULTS = {
   style: 'ballstick', sphere: 0.25, fill: 1.0, hScale: 0.8, stick: 0.13, labelScale: 1, labels: 'name',
-  showH: true, multi: true, stereo: true, surface: false, planeGrid: 0.6, glass: true, symNoH: false
+  showH: true, multi: true, stereo: true, surface: false, planeGrid: 0.6, planeMark: true, glass: true, symNoH: false
 };
 
 /* ===== 小道具 ===== */
@@ -181,8 +184,8 @@ const S = {
   stereo: [], ez: [], chir: null,
   rings: [], confs: [], confActive: -1,
   E: null, Emin: null, Elabel: '',
-  sel: [], planeSel: [], planes: [], sym: null, symShow: true,
-  clickMode: 'rotate', spin: false, token: 0, busy: false, strained: new Set(), atomClickT: 0
+  sel: [], planeSel: [], planes: [], sym: null, symShow: true, onPlane: new Map(),
+  clickMode: 'rotate', sheet: 'open', spin: false, token: 0, busy: false, strained: new Set(), atomClickT: 0
 };
 
 /* ===== OCL ヘルパ ===== */
@@ -332,7 +335,7 @@ function screenToModel(x, y) {
 }
 
 /* ===== 原子ラベル（HTML オーバーレイ） ===== */
-const LB = { pool: [], dirty: true, key: '' };
+const LB = { pool: [], rings: [], dirty: true, key: '' };
 function rotq(q, p) {   // 四元数 q = [x,y,z,w] でベクトルを回す
   const [x, y, z, w] = q;
   const ix = w * p[0] + y * p[2] - z * p[1], iy = w * p[1] + z * p[0] - x * p[2], iz = w * p[2] + x * p[1] - y * p[0], iw = -x * p[0] - y * p[1] - z * p[2];
@@ -409,6 +412,25 @@ function drawLabels(view) {
     el.style.zIndex = (s || warn ? 3000 : 1000) + Math.round(dep[i] * 10);
     el.style.display = '';
   }
+  // 同一平面上の原子：平面の色の輪で囲む（複数の平面に乗る原子は輪を重ねる）
+  let rk = 0;
+  if (st.planeMark) {
+    for (const [i, colors] of S.onPlane) {
+      if (i >= n || !shown(i)) continue;
+      colors.forEach((col, m) => {
+        let el = LB.rings[rk];
+        if (!el) { el = document.createElement('div'); el.className = 'ring'; $('#labels').appendChild(el); LB.rings[rk] = el; }
+        rk++;
+        const rr = Math.max(9, rad[i] + 4 + m * 5);
+        el.style.width = el.style.height = (2 * rr) + 'px';
+        el.style.setProperty('--c', col);
+        el.style.transform = `translate(${(scr[i][0] - rr).toFixed(1)}px, ${(scr[i][1] - rr).toFixed(1)}px)`;
+        el.style.zIndex = 900 + Math.round(dep[i] * 10);
+        el.style.display = '';
+      });
+    }
+  }
+  for (; rk < LB.rings.length; rk++) LB.rings[rk].style.display = 'none';
   // 計測・作図の選択順の番号
   const nums = [...S.sel.map((i, j) => [i, j + 1, '']), ...S.planeSel.map((i, j) => [i, j + 1, ' pl']),
     ...(S.clickMode === 'build' && BS.pick >= 0 && BS.pick < n ? [[BS.pick, '1', ' bd']] : [])];
@@ -434,6 +456,8 @@ function renderModel({ resetView = false } = {}) {
     S.model = null; S.atoms = []; S.X = []; S.names = [];
     viewer.removeAllShapes(); viewer.removeAllSurfaces(); viewer.render();
     LB.pool.forEach((el) => { el.style.display = 'none'; });
+    LB.rings.forEach((el) => { el.style.display = 'none'; });
+    S.onPlane = new Map();
     refreshGeometryPanels();
     return;
   }
@@ -542,6 +566,7 @@ function runSymmetry(announce = true) {
         : '<br>（回映軸 S<sub>n</sub> は未検査）');
   }
   $('#symVerdict').innerHTML = html;
+  computeOnPlane();
   if (announce) { drawShapes(); viewer.render(); }
 }
 
@@ -554,15 +579,32 @@ function renderPlanes() {
     const P = pl.atoms.map((i) => S.X[i]);
     const f = Chem.fitPlane(P);
     const mir = Chem.testMirror(atoms, f.c, f.n, SYM_TOL);
-    const on = S.X.map((p, i) => [i, Math.abs(Chem.dot(Chem.sub(p, f.c), f.n))]).filter(([, d]) => d < 0.15).map(([i]) => S.names[i]);
+    const dist = S.X.map((p, i) => [i, Math.abs(Chem.dot(Chem.sub(p, f.c), f.n))]);
+    const on = dist.filter(([, d]) => d <= PLANE_EXACT).map(([i]) => S.names[i]);
+    const near = dist.filter(([, d]) => d > PLANE_EXACT && d <= PLANE_NEAR).map(([i, d]) => `${S.names[i]}（${d.toFixed(3)}）`);
     return `<div class="item"><div class="hd"><span class="sw-c" style="background:${pl.color}"></span><b>平面 ${k + 1}</b>
       <span class="r"><button class="mini-btn${pl.visible ? ' on' : ''}" data-pv="${k}">${pl.visible ? '表示中' : '非表示'}</button><button class="mini-btn" data-pd="${k}">削除</button></span></div>
       <div class="sub">定義：${pl.atoms.map((i) => S.names[i]).join('・')}　RMS ${f.rms.toFixed(3)} Å</div>
       <div class="sub">${mir.ok ? `<span class="ok">✓ 鏡映面</span>（最大ずれ ${mir.worst.toFixed(3)} Å）` : `<span class="ng">× 鏡映面ではない</span>（重ならない原子 ${mir.bad} 個）`}</div>
-      <div class="sub">面上の原子（±0.15 Å）：${on.length ? on.join('、') : 'なし'}</div></div>`;
+      <div class="sub"><b class="onplane" style="--c:${pl.color}">同一平面上 ${on.length} 個</b>（|d| ≤ ${PLANE_EXACT} Å）：${on.length ? on.join('、') : 'なし'}</div>
+      ${near.length ? `<div class="sub">わずかに外れる原子（≤ ${PLANE_NEAR} Å）：${near.join('、')}</div>` : ''}</div>`;
   }).join('');
   $$('#planeList [data-pv]').forEach((b) => b.addEventListener('click', () => { const p = S.planes[+b.dataset.pv]; p.visible = !p.visible; renderPlanes(); drawShapes(); viewer.render(); }));
   $$('#planeList [data-pd]').forEach((b) => b.addEventListener('click', () => { S.planes.splice(+b.dataset.pd, 1); renderPlanes(); drawShapes(); viewer.render(); }));
+  computeOnPlane();
+}
+
+// 作図した平面・検出した鏡映面に厳密に乗っている原子（3D 画面で輪を付ける）
+function computeOnPlane() {
+  S.onPlane = new Map();
+  const mark = (c, n, color) => S.X.forEach((p, i) => {
+    if (Math.abs(Chem.dot(Chem.sub(p, c), n)) > PLANE_EXACT) return;
+    if (!S.onPlane.has(i)) S.onPlane.set(i, []);
+    S.onPlane.get(i).push(color);
+  });
+  S.planes.forEach((pl) => { if (pl.visible) { const f = Chem.fitPlane(pl.atoms.map((i) => S.X[i])); mark(f.c, f.n, pl.color); } });
+  if (S.sym && S.symShow) S.sym.planes.forEach((pl) => mark(pl.c, pl.n, '#03af7a'));
+  LB.dirty = true;
 }
 
 /* ===== 計測 ===== */
@@ -1220,6 +1262,7 @@ function savePNG() {
 
 /* ===== イベント ===== */
 let setClick = () => {};
+let setSheet = () => {};
 function bind() {
   $('#searchForm').addEventListener('submit', (e) => { e.preventDefault(); $('#q').blur(); search($('#q').value, $('#mode').value); });
 
@@ -1228,6 +1271,7 @@ function bind() {
   buildSliders();
   const tog = (id, key) => { const el = $(id); el.checked = S.set[key]; el.addEventListener('change', () => { S.set[key] = el.checked; saveSettings(); applyStyle(); }); };
   tog('#tH', 'showH'); tog('#tOrder', 'multi'); tog('#tStereo', 'stereo'); tog('#tSurf', 'surface');
+  tog('#tPlaneMark', 'planeMark');
   const tsh = $('#tSymH'); tsh.checked = S.set.symNoH;
   tsh.addEventListener('change', () => { S.set.symNoH = tsh.checked; saveSettings(); renderPlanes(); if (S.sym) runSymmetry(true); });
 
@@ -1237,10 +1281,34 @@ function bind() {
     else if (S.clickMode === 'build') setClick('rotate');
     $$('.tab').forEach((x) => x.classList.toggle('on', x === t));
     $$('.pane').forEach((p) => p.classList.toggle('on', p.dataset.pane === t.dataset.tab));
-    sheetMin(false);
+    if (S.sheet !== 'open') setSheet('open');
   }));
-  const sheetMin = (on) => { $('#inspector').classList.toggle('min', on); document.body.classList.toggle('sheet-min', on); };
-  $('#grab').addEventListener('click', () => sheetMin(!$('#inspector').classList.contains('min')));
+  // スマホのシート：開く → 小さく → 隠す。つまみのタップで開く／小さくを切り替え、上下にスワイプで段階を移る
+  const SHEET = ['open', 'min', 'hidden'];
+  setSheet = (state) => {
+    S.sheet = state;
+    $('#inspector').classList.toggle('min', state === 'min');
+    document.body.classList.toggle('sheet-min', state === 'min');
+    document.body.classList.toggle('sheet-hidden', state === 'hidden');
+    $('#sheetBtn').setAttribute('aria-label', state === 'hidden' ? 'パネルを表示' : 'パネルを隠す');
+    if (state === 'hidden') $('#cands').hidden = true;
+  };
+  $('#grab').addEventListener('click', () => setSheet(S.sheet === 'open' ? 'min' : 'open'));
+  $('#sheetBtn').addEventListener('click', () => setSheet(S.sheet === 'hidden' ? 'open' : 'hidden'));
+  let swipe = null;
+  $('#inspector').addEventListener('pointerdown', (e) => {
+    const r = $('#inspector').getBoundingClientRect();
+    if (innerWidth > 760 || e.clientY - r.top > 70 || e.target.closest('input, select, .menu-btn')) return;
+    swipe = { y: e.clientY, t: performance.now() };
+  });
+  window.addEventListener('pointerup', (e) => {
+    if (!swipe) return;
+    const dy = e.clientY - swipe.y, fast = performance.now() - swipe.t < 350;
+    swipe = null;
+    if (Math.abs(dy) < (fast ? 30 : 70)) return;
+    const k = SHEET.indexOf(S.sheet) + (dy > 0 ? 1 : -1);
+    setSheet(SHEET[Math.max(0, Math.min(2, k))]);
+  });
   // 検索候補を出している間はサイドバーの一覧を隠す
   new MutationObserver(() => document.body.classList.toggle('searching', !$('#cands').hidden)).observe($('#cands'), { attributes: true, attributeFilter: ['hidden'] });
 
@@ -1263,7 +1331,7 @@ function bind() {
   $('#planeSelClear').addEventListener('click', () => { S.planeSel = []; renderPlanes(); drawShapes(); viewer.render(); LB.dirty = true; });
   $('#symFind').addEventListener('click', () => {
     if (!S.model) return;
-    if (S.sym && S.symShow) { S.symShow = false; S.sym = null; $('#symVerdict').innerHTML = ''; $('#symFind').textContent = '対称面を自動検出'; drawShapes(); viewer.render(); return; }
+    if (S.sym && S.symShow) { S.symShow = false; S.sym = null; $('#symVerdict').innerHTML = ''; $('#symFind').textContent = '対称面を自動検出'; computeOnPlane(); drawShapes(); viewer.render(); return; }
     S.symShow = true; runSymmetry(true); $('#symFind').textContent = '検出結果を消す';
   });
 
@@ -1570,12 +1638,59 @@ function bindBuilder() {
   });
 }
 
+/* ===== ホーム画面に追加（PWA） ===== */
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let installPrompt = null;
+function setupInstall() {
+  const app = document.documentElement.classList.contains('app');
+  const buttons = $$('.install-btn');
+  const show = (on) => buttons.forEach((b) => { b.hidden = !on; });
+  // Mac アプリ内・ホーム画面から開いたときは出さない。iPhone/iPad は共有メニューから、Chrome などは確認画面から追加する
+  show(!app && !isStandalone() && (isIOS() || !!installPrompt));
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; if (!app && !isStandalone()) show(true); });
+  window.addEventListener('appinstalled', () => { installPrompt = null; show(false); toast('ホーム画面に追加しました', 'ホーム画面のアイコンからアプリとして開けます。', 'ok'); });
+  buttons.forEach((b) => b.addEventListener('click', async () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      await installPrompt.userChoice.catch(() => {});
+      installPrompt = null;
+    } else {
+      showInstallSheet();
+    }
+  }));
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch((e) => console.warn('service worker', e));
+  }
+}
+// iPhone / iPad は確認画面を出す API が無いので、共有メニューからの手順を示す
+function showInstallSheet() {
+  if ($('.install-sheet')) return;
+  const el = document.createElement('div');
+  el.className = 'glass install-sheet';
+  el.dataset.glass = 'install';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', 'ホーム画面に追加');
+  el.innerHTML = `<h2><img src="apple-touch-icon.png" alt="">ホーム画面に追加</h2>
+    <p class="footnote" style="margin:0">アプリのように全画面で開けるようになります。</p>
+    <ol>
+      <li><span>画面下（iPad は右上）の <svg><use href="#i-share"/></svg> 共有ボタンをタップ</span></li>
+      <li><span>「ホーム画面に追加」を選ぶ（見当たらなければ下へスクロール）</span></li>
+      <li><span>右上の「追加」をタップ</span></li>
+    </ol>
+    <button class="btn filled" type="button">OK</button>`;
+  document.body.appendChild(el);
+  const close = () => { el.classList.add('closing'); setTimeout(() => el.remove(), 200); };
+  el.querySelector('button').addEventListener('click', close);
+}
+
 /* ===== 起動 ===== */
 applyTheme(store.get('ml.theme', 'auto'));
 LiquidGlass.init();
 initViewer();
 bind();
 bindBuilder();
+setupInstall();
 renderSide();
 requestAnimationFrame(labelLoop);
 if (!hasOCL()) toast('OpenChemLib を読み込めませんでした', '立体化学・配座の機能は使えません（表示は可能）。', 'err');
