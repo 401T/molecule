@@ -626,8 +626,12 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   transition: transform .26s var(--snap), width .26s var(--snap), height .26s var(--snap), opacity .15s;
 }
 .lens.no-anim { transition: none; }
-/* 分子の回転中は大きなパネルの屈折を止めてぼかしだけにする */
+/* 分子の回転中は、分子の上に重なるガラスすべての屈折を止めてぼかしだけにする
+   （屈折フィルタを毎フレーム計算し直すと合成が追いつかず、3D 表示が落ちることがある） */
 .lg-motion .sidebar, .lg-motion .inspector { -webkit-backdrop-filter: blur(var(--blur)) saturate(190%) !important; backdrop-filter: blur(var(--blur)) saturate(190%) !important; }
+.lg-motion [style*="#lg"] { -webkit-backdrop-filter: blur(10px) saturate(190%) !important; backdrop-filter: blur(10px) saturate(190%) !important; }
+/* 3D のキャンバスを独立した層にして、上のガラスを描き直しても巻き込まれないようにする */
+.viewer canvas { transform: translateZ(0); }
 /* 静止中は白いガラス、屈折させるのは動いている間だけ（描画負荷も抑える） */
 .range:not(.dragging) .knob { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 .nav > .lens { border-radius: 16px; }

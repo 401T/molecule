@@ -4,7 +4,7 @@
      （保存分を先に返すと、新しい HTML と古い CSS が食い違って表示が崩れるため）
    ・ライブラリ（vendor/）とサンプル分子（data/）も同梱し、インストール時にすべて保存する
    ・PubChem / Wikidata の結果：ネットワーク優先、つながらないときは保存分 */
-const VERSION = 'molecule-202611021311-1f74665';
+const VERSION = 'molecule-202611021319-eca40e0';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'chem.js', 'builder.js', 'glass.js',
   'vendor/3Dmol-min.js', 'vendor/openchemlib-full.js', 'data/samples.js',

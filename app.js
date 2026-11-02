@@ -149,12 +149,12 @@ const props = async (cids) => (await getJSON(`${PUG}/compound/cid/${cids.join(',
 
 async function wikidataSearch(term, lang) {
   const s = await getJSON(`${WD}?action=wbsearchentities&search=${encodeURIComponent(term)}&language=${lang}&uselang=ja&type=item&limit=8&format=json&origin=*`);
-  const ids = s.search.map((x) => x.id);
+  const ids = (s?.search || []).map((x) => x.id);   // 混雑時はエラーの本文が返る
   if (!ids.length) return [];
   const e = await getJSON(`${WD}?action=wbgetentities&ids=${ids.join('|')}&props=claims|labels|descriptions&languages=ja|en&format=json&origin=*`);
   const out = [];
   for (const id of ids) {
-    const ent = e.entities[id];
+    const ent = e?.entities?.[id];
     const cl = ent?.claims?.P662;
     if (!cl) continue;
     const best = cl.find((c) => c.rank === 'preferred') || cl.find((c) => c.rank !== 'deprecated');
@@ -164,7 +164,7 @@ async function wikidataSearch(term, lang) {
   if (out.length) return out;
   // PubChem CID (P662) が無い項目（例：グルコース）は、化学物質らしい上位項目の英語名で PubChem を引き直す
   for (const id of ids.slice(0, 3)) {
-    const ent = e.entities[id];
+    const ent = e?.entities?.[id];
     const en = ent?.labels?.en?.value;
     if (!en || !(ent.claims.P231 || ent.claims.P233 || ent.claims.P274)) continue;
     try {
@@ -240,16 +240,27 @@ function superpose(Y, X, idx) {
 
 /* ===== 3D ビューア ===== */
 let viewer;
-// 3Dmol.js は画面の画素密度をそのまま使い、なめらか処理が有効だとさらに上げる。
-// 画面全体に描くので、描画解像度を 2 倍までに抑え、スマホではなめらか処理を切る
+// 3Dmol.js は画面の画素密度をそのまま使い、なめらか処理が有効で 2 倍未満ならさらに 2 倍にする。
+// 画面全体（ガラスの裏まで）に描くので、キャンバスの画素数に上限を設けてメモリと合成の負担を抑える
 const PHONE = matchMedia('(max-width: 760px), (pointer: coarse)').matches;
+const GL_PIXELS = PHONE ? 2.2e6 : 5e6;
 (() => {
   const d = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio');
   if (!d?.configurable || !d.get) return;
   const real = d.get.bind(window);
-  // スマホは 1.5 倍まで（iPhone の 3 倍のままだと全画面のキャンバスでメモリを使い切りやすい）
-  Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => Math.min(real(), PHONE ? 1.5 : 2) });
+  Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => {
+    const r = real(), el = document.getElementById('viewer');
+    const area = Math.max(1, (el?.clientWidth || innerWidth) * (el?.clientHeight || innerHeight));
+    // 実際に使う倍率：なめらか処理なしのスマホは 1.5 倍まで、パソコンは 2 倍まで、画素数の上限以内
+    const want = Math.min(PHONE ? Math.min(r, 1.5) : 2, Math.sqrt(GL_PIXELS / area));
+    if (PHONE) return Math.max(0.5, want);
+    return want >= 2 ? want : Math.max(0.5, want / 2);   // 3Dmol.js が 2 倍にするので半分を返す
+  } });
 })();
+// 3Dmol.js は見えないキャンバス（OffscreenCanvas）に描いてから画面のキャンバスへ画像を移す。
+// その画面側のキャンバスにガラス（backdrop-filter）が重なると、合成のときに中身が落ちて
+// 球と棒だけが消えることがある。画面のキャンバスへ直接描く標準の方式を使わせる
+try { if ('OffscreenCanvas' in window) window.OffscreenCanvas = undefined; } catch (e) { /* 使えなければそのまま */ }
 function initViewer() {
   viewer = $3Dmol.createViewer($('#viewer'), { backgroundColor: 'white', backgroundAlpha: 0, antialias: !PHONE });
   viewer.setBackgroundColor(0xffffff, 0);
@@ -284,8 +295,12 @@ function rebuildViewer() {
   clearTimeout(glLostTimer);
   const now = Date.now();
   while (rebuildLog.length && now - rebuildLog[0] > 60000) rebuildLog.shift();
-  if (rebuildLog.length && now - rebuildLog[rebuildLog.length - 1] < 4000) { glLostTimer = setTimeout(rebuildViewer, 4000); return; }
-  if (rebuildLog.length >= 3) return;   // 1 分に 3 回まで。それ以上はメモリ不足が続いているので休む
+  // 続けて失うときは間隔を 4 → 8 → 16 → 30 秒と空ける（メモリを使い切らないように）。あきらめずに必ず戻す
+  const wait = Math.min(30000, 4000 * 2 ** Math.max(0, rebuildLog.length - 1));
+  if (rebuildLog.length && now - rebuildLog[rebuildLog.length - 1] < wait) {
+    glLostTimer = setTimeout(rebuildViewer, wait - (now - rebuildLog[rebuildLog.length - 1]));
+    return;
+  }
   rebuildLog.push(now);
   let view = null;
   try { view = viewer.getView(); } catch (e) { /* 失った状態では取れないこともある */ }
@@ -1804,7 +1819,7 @@ function bindBuilder() {
   // 何もない所のクリック（ドラッグで回転したときは除く）
   let down = null;
   $('#viewer').addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; LiquidGlass.setMotion(true); });
-  window.addEventListener('pointerup', () => { if (!S.spin) LiquidGlass.setMotion(false); });
+  ['pointerup', 'pointercancel'].forEach((t) => window.addEventListener(t, () => { if (!S.spin) LiquidGlass.setMotion(false); }));
   $('#viewer').addEventListener('wheel', () => { LiquidGlass.setMotion(true); if (!S.spin) LiquidGlass.setMotion(false, 500); }, { passive: true });
   $('#viewer').addEventListener('pointerup', (e) => {
     if (!down || S.clickMode !== 'build') return;
