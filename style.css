@@ -744,8 +744,8 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 .inline-input.wide::placeholder { color: var(--label3); }
 .btn.block { display: flex; width: 100%; margin-top: 12px; }
 .t-green { background: var(--green); }
-.formula { font-size: 13px; color: var(--label2); font-feature-settings: "tnum"; }
-.formula sub { font-size: .75em; }
+.item .formula { font-size: 13px; color: var(--label2); font-feature-settings: "tnum"; }
+.item .formula sub { font-size: .75em; }
 
 /* ===== サイズのスライダー（iOS 設定と同じ形：両端にアイコン、下に値） ===== */
 .size-list { display: flex; flex-direction: column; gap: 10px; }

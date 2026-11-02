@@ -247,7 +247,8 @@ const PHONE = matchMedia('(max-width: 760px), (pointer: coarse)').matches;
   const d = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio');
   if (!d?.configurable || !d.get) return;
   const real = d.get.bind(window);
-  Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => Math.min(real(), 2) });
+  // スマホは 1.5 倍まで（iPhone の 3 倍のままだと全画面のキャンバスでメモリを使い切りやすい）
+  Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => Math.min(real(), PHONE ? 1.5 : 2) });
 })();
 function initViewer() {
   viewer = $3Dmol.createViewer($('#viewer'), { backgroundColor: 'white', backgroundAlpha: 0, antialias: !PHONE });
@@ -277,11 +278,27 @@ function watchGLContext() {
 function glLost() {
   try { return !!viewer.renderer?.context?.isContextLost?.(); } catch (e) { return false; }
 }
+// 作り直しは慎重に：古い表示を解放し、短い間に何度も作り直さない（メモリを使い切ってページが落ちるため）
+const rebuildLog = [];
 function rebuildViewer() {
   clearTimeout(glLostTimer);
+  const now = Date.now();
+  while (rebuildLog.length && now - rebuildLog[0] > 60000) rebuildLog.shift();
+  if (rebuildLog.length && now - rebuildLog[rebuildLog.length - 1] < 4000) { glLostTimer = setTimeout(rebuildViewer, 4000); return; }
+  if (rebuildLog.length >= 3) return;   // 1 分に 3 回まで。それ以上はメモリ不足が続いているので休む
+  rebuildLog.push(now);
   let view = null;
   try { view = viewer.getView(); } catch (e) { /* 失った状態では取れないこともある */ }
+  // 古い表示を解放する
+  try { viewer.spin(false); viewer.clear(); } catch (e) { /* すでに失っている */ }
+  try {
+    const gl = viewer.renderer?.context;
+    if (gl && !gl.isContextLost()) gl.getExtension('WEBGL_lose_context')?.loseContext();
+    if (gl?.canvas) { gl.canvas.width = 1; gl.canvas.height = 1; }
+  } catch (e) { /* 何もしない */ }
+  $$('#viewer canvas').forEach((c) => { c.width = 1; c.height = 1; });
   $('#viewer').innerHTML = '';
+  viewer = null;
   initViewer();
   if (S.model || S.mol || S.sdf) {
     renderModel({ resetView: !view });
