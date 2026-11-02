@@ -14,8 +14,17 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Molecule">
 <link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/3dmol@2.4.2/build/3Dmol-min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/openchemlib@8.21.0/dist/openchemlib-full.js" defer></script>
+<script>
+  // Mac アプリ（Electron）として開いたときは、ウインドウの枠を内容に合わせる
+  if (/Electron\//.test(navigator.userAgent)) document.documentElement.classList.add('app');
+</script>
+<script>
+  // Web 版は CDN から、Mac アプリ（file://）は同梱した vendor/ から読み込む（順序を保つため defer で書き出す）
+  for (const [cdn, local] of [
+    ['https://cdn.jsdelivr.net/npm/3dmol@2.4.2/build/3Dmol-min.js', 'vendor/3Dmol-min.js'],
+    ['https://cdn.jsdelivr.net/npm/openchemlib@8.21.0/dist/openchemlib-full.js', 'vendor/openchemlib-full.js']
+  ]) document.write(`<script src="${location.protocol === 'file:' ? local : cdn}" defer><\/script>`);
+</script>
 <script src="chem.js" defer></script>
 <script src="builder.js" defer></script>
 <script src="glass.js" defer></script>
@@ -23,6 +32,7 @@
 </head>
 <body>
 <svg id="lgDefs" width="0" height="0" aria-hidden="true" style="position:absolute"></svg>
+<div class="drag-strip" aria-hidden="true"></div>
 
 <!-- ===== アイコン（SF Symbols 風の自作アイコン） ===== -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

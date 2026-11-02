@@ -23,7 +23,19 @@
 | 構造データ | [PubChem](https://pubchem.ncbi.nlm.nih.gov/)（NCBI） |
 | 和名検索 | [Wikidata](https://www.wikidata.org/)（CC0） |
 
-ビルド手順はありません。静的ファイルだけで動きます。手元で確認するときは次を実行し、`http://localhost:8765` を開いてください。
+## Mac アプリ
+
+Electron で包んだ Mac アプリ版があります（Apple Silicon 用）。Web 版と同じ画面で、メニューバー・キーボードショートカット（⌘N 新しい分子、⌘F 検索、⌘S 画像を保存、⌘1〜4 クリック動作の切り替えなど）に対応します。3Dmol.js と OpenChemLib を同梱しているので起動が速くなります。
+
+```bash
+npm install
+npm start          # 開発用に起動
+npm run build:mac  # dist/Molecule-darwin-arm64/Molecule.app を作る
+```
+
+## Web 版
+
+Web 版にはビルド手順はありません。静的ファイルだけで動きます。手元で確認するときは次を実行し、`http://localhost:8765` を開いてください。
 
 ```bash
 python3 -m http.server 8765

@@ -1,0 +1,18 @@
+{
+  "name": "molecule",
+  "productName": "Molecule",
+  "version": "1.0.0",
+  "description": "分子式・名称・SMILESから、または原子を組み合わせて分子の立体構造を3Dで表示するアプリ",
+  "author": "401T",
+  "license": "MIT",
+  "private": true,
+  "main": "desktop/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-packager . Molecule --platform=darwin --arch=arm64 --icon=desktop/icon.icns --app-bundle-id=io.github.401t.molecule --app-category-type=public.app-category.education --out=dist --overwrite --ignore=^/dist --ignore=^/\\.git --ignore=^/README.md --ignore=^/icon.svg --ignore=^/apple-touch-icon.png"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "44.7.2"
+  }
+}

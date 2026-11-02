@@ -43,7 +43,8 @@
   --r-panel: 34px;
   --r-group: 24px;
   --gap: 12px;
-  --spring: cubic-bezier(.34, 1.45, .55, 1);
+  --spring: cubic-bezier(.25, 1.1, .4, 1);   /* 戻りを小さく、短く */
+  --snap: cubic-bezier(.2, .8, .2, 1);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -232,7 +233,6 @@ a:hover { text-decoration: underline; }
   transition: background .25s, transform .25s var(--spring);
 }
 .nv:hover { background: var(--fill4); }
-.nv:active { transform: scale(.97); }
 .nv.on { background: var(--lens); font-weight: 600; box-shadow: inset 0 1px 0 var(--glass-hi), 0 2px 10px rgba(0,0,0,.08); }
 .tile { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: #fff; flex: none; position: relative; overflow: hidden; box-shadow: inset 0 1px 0 rgba(255,255,255,.45); }
 .tile::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.3), transparent 55%); }
@@ -271,7 +271,6 @@ a:hover { text-decoration: underline; }
 }
 .chipbtn svg { width: 16px; height: 16px; }
 .chipbtn:hover:not(:disabled) { background: var(--fill2); }
-.chipbtn:active:not(:disabled) { transform: scale(.95); }
 
 /* ===== 検索フィールド ===== */
 .search {
@@ -305,9 +304,8 @@ body.searching .side-list { visibility: hidden; }
 /* ===== 右上ツールバー（ガラスのカプセルにボタンをまとめる） ===== */
 .toolbar { position: fixed; z-index: 10; top: var(--gap); right: var(--right); display: flex; gap: 10px; }
 .capsule { position: relative; display: flex; align-items: center; gap: 0; padding: 3px; border-radius: 999px; }
-.ic { width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; display: grid; place-items: center; color: var(--label); transition: background .2s, transform .3s var(--spring); }
+.ic { width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; display: grid; place-items: center; color: var(--label); transition: background .2s, transform .22s var(--spring); }
 .ic:hover { background: var(--fill4); }
-.ic:active { transform: scale(.86); }
 .ic.on { background: var(--blue); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.4); }
 .ic svg { width: 21px; height: 21px; stroke-width: 2; }
 
@@ -323,10 +321,9 @@ body.searching .side-list { visibility: hidden; }
 }
 .tab {
   border: 0; background: transparent; padding: 7px 0 6px; border-radius: 999px; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  font-size: 10px; font-weight: 600; color: var(--label); transition: background .3s, color .3s, transform .3s var(--spring);
+  font-size: 10px; font-weight: 600; color: var(--label); transition: background .15s, color .15s;
 }
 .tab svg { width: 22px; height: 22px; stroke-width: 1.9; }
-.tab:active { transform: scale(.92); }
 .tab.on { background: var(--lens); color: var(--blue); box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 12px rgba(0,0,0,.1); }
 .panes { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 16px 28px; scrollbar-width: none; }
 .pane { display: none; }
@@ -349,9 +346,8 @@ body.searching .side-list { visibility: hidden; }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--fill3); border-radius: 999px; padding: 3px; gap: 0; }
 .seg button {
   border: 0; background: transparent; border-radius: 999px; padding: 8px 4px; font-size: 14px; font-weight: 500; color: var(--label); white-space: nowrap;
-  transition: background .3s, box-shadow .3s, transform .3s var(--spring);
+  transition: background .15s, box-shadow .15s;
 }
-.seg button:active { transform: scale(.94); }
 .seg button.on { background: var(--knob); font-weight: 600; box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 3px 10px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04); }
 :root[data-theme="dark"] .seg button.on { background: rgba(255,255,255,.22); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button.on { background: rgba(255,255,255,.22); } }
@@ -367,7 +363,7 @@ body.searching .side-list { visibility: hidden; }
 .sw::after {
   content: ""; position: absolute; top: 2px; left: 2px; width: 39px; height: 24px; border-radius: 999px; background: var(--knob);
   box-shadow: 0 3px 8px rgba(0,0,0,.15), 0 1px 1px rgba(0,0,0,.06), inset 0 1px 0 rgba(255,255,255,.9);
-  transition: transform .35s var(--spring), width .2s, background .2s;
+  transition: transform .22s var(--spring), width .2s, background .2s;
 }
 .tg:active .sw::after { width: 44px; background: rgba(255,255,255,.75); }
 .tg input:checked + .sw { background: var(--green); }
@@ -393,7 +389,7 @@ input[type=range]::-moz-range-progress { height: 6px; border-radius: 999px; back
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none; width: 38px; height: 24px; margin-top: -9px; border-radius: 999px; border: 0;
   background: var(--knob); box-shadow: 0 .5px 4px rgba(0,0,0,.12), 0 6px 13px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.9);
-  transition: transform .3s var(--spring);
+  transition: transform .22s var(--spring);
 }
 input[type=range]:active::-webkit-slider-thumb { transform: scale(1.18); background: rgba(255,255,255,.7); }
 input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 999px; border: 0; background: var(--knob); box-shadow: 0 .5px 4px rgba(0,0,0,.12), 0 6px 13px rgba(0,0,0,.12); }
@@ -403,10 +399,9 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 999px;
   padding: 10px 18px; font-size: 15px; font-weight: 600; min-height: 44px;
-  transition: filter .2s, background .2s, transform .3s var(--spring);
+  transition: filter .2s, background .2s, transform .22s var(--spring);
 }
 .btn svg { width: 18px; height: 18px; stroke-width: 2.1; }
-.btn:active:not(:disabled) { transform: scale(.94); }
 .btn.gray, .btn.tinted {
   background: var(--cell); color: var(--label);
   box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 .5px var(--glass-edge), 0 2px 8px rgba(0,0,0,.06);
@@ -425,12 +420,10 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 .palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; }
 .pel {
   aspect-ratio: 1; border: 0; border-radius: 18px; background: var(--cell); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  font: 700 16px/1 var(--font-round); position: relative; transition: transform .3s var(--spring), box-shadow .2s, background .2s;
+  font: 700 16px/1 var(--font-round); position: relative; transition: transform .22s var(--spring), box-shadow .2s, background .2s;
   box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 .5px var(--glass-edge);
 }
 .pel i { width: 11px; height: 11px; border-radius: 50%; box-shadow: inset -1px -1px 2px rgba(0,0,0,.3), 0 0 0 .5px rgba(0,0,0,.25); }
-.pel:hover { transform: translateY(-2px); }
-.pel:active { transform: scale(.9); }
 .pel.on { background: var(--blue); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 6px 16px color-mix(in srgb, var(--blue) 40%, transparent); }
 .pel.on i { box-shadow: 0 0 0 1.5px #fff; }
 
@@ -470,9 +463,8 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 .item .tag { margin: 0; }
 .cipbig { display: inline-grid; place-items: center; min-width: 30px; height: 30px; border-radius: 50%; background: var(--orange); color: #fff; font: 800 15px/1 var(--font-round); padding: 0 6px; box-shadow: inset 0 1px 0 rgba(255,255,255,.4); }
 .cipbig.pseudo { background: var(--purple); }
-.mini-btn { border: 0; border-radius: 999px; padding: 6px 13px; font-size: 14px; font-weight: 600; background: var(--fill3); color: var(--blue); transition: background .2s, transform .3s var(--spring); }
+.mini-btn { border: 0; border-radius: 999px; padding: 6px 13px; font-size: 14px; font-weight: 600; background: var(--fill3); color: var(--blue); transition: background .2s, transform .22s var(--spring); }
 .mini-btn:hover:not(:disabled) { background: var(--fill2); }
-.mini-btn:active:not(:disabled) { transform: scale(.92); }
 .mini-btn.on { background: var(--blue); color: #fff; }
 .ring-ctl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .item .slider-row { padding: 10px 0 0; }
@@ -505,10 +497,9 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 }
 .modebar button {
   border: 0; background: transparent; border-radius: 999px; padding: 7px 18px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  font-size: 10px; font-weight: 600; color: var(--label); min-width: 72px; transition: background .3s, color .3s, transform .35s var(--spring);
+  font-size: 10px; font-weight: 600; color: var(--label); min-width: 72px; transition: background .15s, color .15s;
 }
 .modebar button svg { width: 24px; height: 24px; stroke-width: 1.9; }
-.modebar button:active { transform: scale(.9); }
 .modebar button.on { background: var(--lens); color: var(--blue); box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 14px rgba(0,0,0,.12); }
 
 /* ===== 通知バナー ===== */
@@ -516,7 +507,7 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 .toast {
   display: flex; gap: 12px; align-items: center; border-radius: 26px; padding: 12px 18px 12px 12px; width: min(420px, 100%);
   background: var(--glass-strong); -webkit-backdrop-filter: blur(30px) saturate(190%); backdrop-filter: blur(30px) saturate(190%);
-  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 .5px var(--glass-edge), var(--glass-shadow); animation: tin .55s var(--spring);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 .5px var(--glass-edge), var(--glass-shadow); animation: tin .3s var(--snap);
 }
 .toast .tic { width: 34px; height: 34px; border-radius: 50%; flex: none; display: grid; place-items: center; color: #fff; background: var(--blue); font: 800 16px/1 var(--font-round); box-shadow: inset 0 1px 0 rgba(255,255,255,.4); }
 .toast.err .tic { background: var(--red); }
@@ -572,13 +563,13 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 .modebar > button::after, .nv::after, .cand::after, .sl-item::after, .glass-menu button::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
   background: radial-gradient(circle at var(--px, 50%) var(--py, 50%), var(--lg-glow), transparent 62%);
-  opacity: 0; transition: opacity .6s;
+  opacity: 0; transition: opacity .3s;
 }
 .ic, .tab, .seg > button, .modebar > button, .nv, .cand, .sl-item, .glass-menu button { position: relative; isolation: isolate; }
-.pressing::after { opacity: 1; transition: opacity .06s; }
+.pressing::after { opacity: .45; transition: opacity .05s; }
 /* 押すと膨らむ（ガラスの「しなり」） */
-:is(.btn, .mini-btn, .chipbtn, .pel, .menu-btn, .ic):active:not(:disabled) { transform: scale(1.07); }
-:is(.tab, .seg > button, .modebar > button):active { transform: scale(1.04); }
+:is(.btn, .mini-btn, .chipbtn, .pel, .menu-btn, .ic):active:not(:disabled) { transform: scale(1.03); }
+
 .ic.pressing { background: var(--lens); box-shadow: inset 0 1px .5px var(--lg-hi), 0 4px 12px rgba(0,0,0,.12); }
 
 /* 素材：glassProminent（色付きのガラス） */
@@ -601,32 +592,27 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   position: absolute; left: 0; top: 0; z-index: 0; border-radius: 999px; pointer-events: none; isolation: isolate;
   background: var(--lens);
   box-shadow: inset 0 1px .5px var(--lg-hi), inset 0 -1px 1px var(--lg-lo), inset 0 0 0 .5px var(--lg-edge), 0 4px 14px rgba(0,0,0,.12);
-  transition: transform .6s var(--spring), width .5s var(--spring), height .5s var(--spring), scale .45s var(--spring), background .35s, box-shadow .35s, opacity .2s;
+  transition: transform .26s var(--snap), width .26s var(--snap), height .26s var(--snap), opacity .15s;
 }
 .lens.no-anim { transition: none; }
 /* 分子の回転中は大きなパネルの屈折を止めてぼかしだけにする */
 .lg-motion .sidebar, .lg-motion .inspector { -webkit-backdrop-filter: blur(var(--blur)) saturate(190%) !important; backdrop-filter: blur(var(--blur)) saturate(190%) !important; }
 /* 静止中は白いガラス、屈折させるのは動いている間だけ（描画負荷も抑える） */
-.lens:not(.moving), .range:not(.dragging) .knob { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-.lens.moving {
-  z-index: 2; scale: 1.1 1.22;
-  background: rgba(255, 255, 255, .05);
-  box-shadow: inset 0 1.5px 1px var(--lg-hi), inset 0 -1.5px 2px var(--lg-lo), inset 0 0 0 1px rgba(255,255,255,.35), inset 0 0 16px rgba(255,255,255,.2), 0 12px 28px rgba(0,0,0,.18);
-}
+.range:not(.dragging) .knob { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 .nav > .lens { border-radius: 16px; }
 .seg.icons > .lens { border-radius: 22px; }
 .seg > button.on { color: var(--label); }
 .seg.icons > button.on, .tabs > .tab.on, .modebar > button.on { color: var(--blue); }
 
 /* スイッチ：押している間、つまみが大きな透明のガラスになる */
-.sw::after { transition: transform .4s var(--spring), width .3s var(--spring), height .3s var(--spring), top .3s var(--spring), background .25s, box-shadow .25s; }
+.sw::after { transition: transform .22s var(--snap), width .18s var(--snap), background .15s, box-shadow .15s; }
 .tg:active .sw::after {
-  width: 48px; height: 32px; top: -2px; left: -2px;
+  width: 44px;
   background: rgba(255, 255, 255, .14);
   -webkit-backdrop-filter: var(--lg-knob-filter) saturate(160%); backdrop-filter: var(--lg-knob-filter) saturate(160%);
   box-shadow: inset 0 1.5px 1px rgba(255,255,255,.95), inset 0 -1px 2px rgba(255,255,255,.4), inset 0 0 0 1px rgba(255,255,255,.45), 0 8px 20px rgba(0,0,0,.2);
 }
-.tg:active input:checked + .sw::after { transform: translateX(18px); }
+.tg:active input:checked + .sw::after { transform: translateX(16px); }
 
 /* スライダー：つまみはふだん白いカプセル、ドラッグ中は透明なガラスのレンズ */
 .range { grid-column: 1 / -1; position: relative; height: 32px; }
@@ -637,10 +623,10 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   position: absolute; top: 50%; left: calc((100% - 38px) * var(--pf, .5)); width: 38px; height: 24px; margin-top: -12px;
   border-radius: 999px; pointer-events: none; isolation: isolate; background: var(--knob);
   box-shadow: 0 .5px 4px rgba(0,0,0,.12), 0 6px 13px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.9);
-  transition: scale .45s var(--spring), background .25s, box-shadow .25s;
+  transition: scale .18s var(--snap), background .15s, box-shadow .15s;
 }
 .range.dragging .knob {
-  scale: 1.5 1.6; background: rgba(255, 255, 255, .08);
+  scale: 1.22 1.28; background: rgba(255, 255, 255, .1);
   box-shadow: inset 0 1px .5px rgba(255,255,255,.95), inset 0 -1px 1.5px rgba(255,255,255,.4), inset 0 0 0 .7px rgba(255,255,255,.5), inset 0 0 10px rgba(255,255,255,.2), 0 8px 18px rgba(0,0,0,.18);
 }
 
@@ -651,14 +637,14 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 /* ボタンからガラスのメニューへ変形 */
 .menu-btn {
   display: inline-flex; align-items: center; gap: 2px; height: 42px; border: 0; border-radius: 999px; padding: 0 10px 0 14px;
-  font-size: 14px; font-weight: 600; color: var(--blue); flex: none; transition: transform .35s var(--spring);
+  font-size: 14px; font-weight: 600; color: var(--blue); flex: none; transition: transform .22s var(--spring);
 }
 .menu-btn svg { width: 16px; height: 16px; stroke-width: 2.4; }
 .glass-menu {
   position: fixed; z-index: 60; min-width: 190px; padding: 6px; border-radius: 24px; background: var(--glass-strong);
-  display: flex; flex-direction: column; gap: 1px; animation: menu-in .42s var(--spring);
+  display: flex; flex-direction: column; gap: 1px; animation: menu-in .24s var(--snap);
 }
-.glass-menu.closing { animation: menu-out .24s ease-in forwards; }
+.glass-menu.closing { animation: menu-out .16s ease-in forwards; }
 @keyframes menu-in { from { transform: scale(var(--from-sx, .3), var(--from-sy, .2)); opacity: .2; border-radius: 999px; } }
 @keyframes menu-out { to { transform: scale(var(--from-sx, .3), var(--from-sy, .2)); opacity: 0; } }
 .glass-menu button {
@@ -671,11 +657,19 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 
 @media (prefers-reduced-motion: reduce) {
   .lens, .range .knob, .sw::after, .glass-menu { transition: none !important; animation: none !important; }
-  .lens.moving { scale: 1; z-index: 0; }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .lens.moving, .range.dragging .knob, .tg:active .sw::after { background: var(--knob); }
+  .range.dragging .knob, .tg:active .sw::after { background: var(--knob); }
 }
+
+/* ===== Mac アプリ（Electron） ===== */
+.drag-strip { display: none; }
+.app .drag-strip { display: block; position: fixed; z-index: 9; left: 0; right: 0; top: 0; height: 52px; -webkit-app-region: drag; }
+.app .sidebar .side-head { -webkit-app-region: drag; padding-left: 96px; }   /* 信号ボタンの右に名前を置く */
+.app .sidebar .app-icon { display: none; }
+.app :is(button, input, select, label, a, .glass-menu, .search, .toolbar, .modebar, .inspector .tabs) { -webkit-app-region: no-drag; }
+.app body { user-select: none; }
+.app :is(input, .info, .status, .verdict, .item .sub) { user-select: text; }
 
 /* ===== レスポンシブ ===== */
 @media (max-width: 1180px) {
@@ -711,14 +705,14 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   .elements, .source { display: none; }
   .inspector {
     left: 8px; right: 8px; bottom: 8px; top: auto; width: auto; height: var(--sheet);
-    border-radius: 38px; padding-top: 70px; transition: height .45s var(--spring);
+    border-radius: 38px; padding-top: 70px; transition: height .22s var(--spring);
   }
   .inspector.min { height: var(--sheet-min); }
   .grabber { display: block; position: absolute !important; top: 0; left: 0; right: 0; width: 100%; height: 18px; border: 0; background: transparent; }
   .grabber::before { content: ""; position: absolute; left: 50%; top: 7px; width: 38px; height: 5px; border-radius: 999px; background: var(--label3); transform: translateX(-50%); }
   .search {
     left: 22px; right: 22px; width: auto; top: auto; bottom: calc(8px + var(--sheet) - 64px); padding: 0; background: none; box-shadow: none;
-    -webkit-backdrop-filter: none; backdrop-filter: none; transition: bottom .45s var(--spring);
+    -webkit-backdrop-filter: none; backdrop-filter: none; transition: bottom .22s var(--spring);
   }
   body.sheet-min .search { bottom: calc(8px + var(--sheet-min) - 64px); }
   .field { height: 44px; }

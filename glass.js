@@ -7,7 +7,7 @@
 
    ・data-glass      … 浮遊パネル（縁で屈折するスラブ）
    ・data-refract    … 浮いているボタン類。値 "dome" はレンズ（全体が拡大して見える）
-   ・.lens           … セグメント・タブで選択位置を滑らかに移動するガラスのレンズ
+   ・.lens           … セグメント・タブで選択位置へすばやく移動するガラスのレンズ
    ・range           … スライダーのつまみを、ドラッグ中だけ透明なガラスに変える
    ・select[data-glass-menu] … ボタンからガラスのメニューへ変形するポップアップ
    backdrop-filter の url() に対応する Chromium 系だけ屈折し、それ以外はぼかし＋光沢になる。
@@ -124,7 +124,7 @@ const LiquidGlass = (() => {
     }, 160);
   }
 
-  /* ---------- 選択位置を移動するガラスのレンズ（GlassEffectContainer のモーフィングに相当） ---------- */
+  /* ---------- 選択位置へ移動するガラスのレンズ（GlassEffectContainer のモーフィングに相当） ---------- */
   function attachLens(container) {
     if (!container || container.classList.contains('has-lens')) return;
     container.classList.add('has-lens');
@@ -144,19 +144,11 @@ const LiquidGlass = (() => {
       lens.style.width = box.w + 'px'; lens.style.height = box.h + 'px';
       lens.style.transform = `translate(${box.x}px, ${box.y}px)`;
       if (!moved) { void lens.offsetWidth; lens.classList.remove('no-anim'); }
-      else {
-        // 移動中はレンズが浮き上がり、下の文字を拡大して見せる（その後また沈む）
-        lens.classList.add('moving');
-        clearTimeout(lens._t);
-        lens._t = setTimeout(() => lens.classList.remove('moving'), 460);
-      }
       last = box;
     };
     new MutationObserver((ms) => { if (ms.some((m) => m.target !== lens)) place(); })
       .observe(container, { subtree: true, attributes: true, attributeFilter: ['class'] });
     new ResizeObserver(place).observe(container);
-    lens.dataset.refract = 'dome';
-    track(lens);
     place();
   }
 
@@ -169,11 +161,10 @@ const LiquidGlass = (() => {
     wrap.appendChild(input);
     const knob = document.createElement('span');
     knob.className = 'knob';
-    knob.dataset.refract = 'dome';
     wrap.appendChild(knob);
     input.addEventListener('input', () => setRange(input));
     const end = () => wrap.classList.remove('dragging');
-    input.addEventListener('pointerdown', () => { wrap.classList.add('dragging'); track(knob); });
+    input.addEventListener('pointerdown', () => { wrap.classList.add('dragging'); knob.dataset.refract = 'dome'; track(knob); });
     input.addEventListener('pointerup', end); input.addEventListener('pointercancel', end); input.addEventListener('blur', end);
     return wrap;
   }
