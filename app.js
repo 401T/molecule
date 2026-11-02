@@ -1340,6 +1340,13 @@ function savePNG() {
 
 /* ===== イベント ===== */
 let setClick = () => {};
+// 原子をタップしたときの動作は、開いているタブで決まる
+const TAB_MODE = { measure: 'measure', stereo: 'plane', build: 'build' };
+const MODE_HINT = {
+  measure: ['#i-ruler', '原子をタップして計測'],
+  plane: ['#i-mirror', '原子をタップして対称要素の原子を選ぶ'],
+  build: ['#i-hammer', '原子や空いた所をタップして編集']
+};
 let setSheet = () => {};
 function bind() {
   $('#searchForm').addEventListener('submit', (e) => { e.preventDefault(); $('#q').blur(); search($('#q').value, $('#mode').value); });
@@ -1354,9 +1361,7 @@ function bind() {
   tsh.addEventListener('change', () => { S.set.symNoH = tsh.checked; saveSettings(); renderPlanes(); if (S.sym) runSymmetry(true); });
 
   $$('.tab').forEach((t) => t.addEventListener('click', () => {
-    if (t.dataset.tab === 'build') setClick('build');
-    else if (t.dataset.tab === 'measure' && S.clickMode !== 'measure') setClick('measure');
-    else if (S.clickMode === 'build') setClick('rotate');
+    setClick(TAB_MODE[t.dataset.tab] || 'rotate');
     $$('.tab').forEach((x) => x.classList.toggle('on', x === t));
     $$('.pane').forEach((p) => p.classList.toggle('on', p.dataset.pane === t.dataset.tab));
     if (S.sheet !== 'open') setSheet('open');
@@ -1393,11 +1398,12 @@ function bind() {
   setClick = (mode) => {
     S.clickMode = mode;
     if (mode !== 'build') BS.pick = -1;
-    $$('#clickSeg button').forEach((b) => b.classList.toggle('on', b.dataset.click === mode));
+    const hint = MODE_HINT[mode];
+    $('#modeHint').hidden = !hint;
+    if (hint) { $('#modeHint use').setAttribute('href', hint[0]); $('#modeHint span').textContent = hint[1]; }
     if (S.model) { drawShapes(); viewer.render(); }
     LB.dirty = true;
   };
-  $('#clickSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setClick(b.dataset.click); });
   $$('[data-mk]').forEach((b) => b.addEventListener('click', () => addElement(b.dataset.mk)));
   $('#planeSelClear').addEventListener('click', () => { S.planeSel = []; renderPlanes(); drawShapes(); viewer.render(); LB.dirty = true; });
   $('#symFind').addEventListener('click', () => {
@@ -1669,14 +1675,14 @@ function bindBuilder() {
     BS.mol = Builder.empty(); BS.undo = []; BS.redo = []; BS.baseName = ''; BS.name = ''; $('#bName').value = '';
     S.cur = { source: 'built', p: {} };
     showBuilt();
-    setClick('build');
+    document.querySelector('.tab[data-tab=build]').click();
     toast('新しい分子', '何もない所をクリックして最初の原子を置いてください。');
   });
   $('#bFromCur').addEventListener('click', () => {
     if (!S.atoms.length) return;
     BS.mol = builderFromCurrent(); BS.undo = []; BS.redo = [];
     showBuilt();
-    setClick('build');
+    document.querySelector('.tab[data-tab=build]').click();
   });
   $('#bUndo').addEventListener('click', () => {
     if (!BS.undo.length) return;

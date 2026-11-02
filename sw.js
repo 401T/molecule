@@ -4,7 +4,7 @@
      （保存分を先に返すと、新しい HTML と古い CSS が食い違って表示が崩れるため）
    ・CDN のライブラリ：版つきの URL なので保存分を優先
    ・PubChem / Wikidata の結果：ネットワーク優先、つながらないときは保存分 */
-const VERSION = 'molecule-202611021223-a0677cb';
+const VERSION = 'molecule-202611021232-6df2481';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'chem.js', 'builder.js', 'glass.js',
   'icon.svg', 'icon-192.png', 'apple-touch-icon.png', 'manifest.webmanifest',
