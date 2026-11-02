@@ -240,8 +240,17 @@ function superpose(Y, X, idx) {
 
 /* ===== 3D ビューア ===== */
 let viewer;
+// 3Dmol.js は画面の画素密度をそのまま使い、なめらか処理が有効だとさらに上げる。
+// 画面全体に描くので、描画解像度を 2 倍までに抑え、スマホではなめらか処理を切る
+const PHONE = matchMedia('(max-width: 760px), (pointer: coarse)').matches;
+(() => {
+  const d = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio');
+  if (!d?.configurable || !d.get) return;
+  const real = d.get.bind(window);
+  Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => Math.min(real(), 2) });
+})();
 function initViewer() {
-  viewer = $3Dmol.createViewer($('#viewer'), { backgroundColor: 'white', backgroundAlpha: 0, antialias: true });
+  viewer = $3Dmol.createViewer($('#viewer'), { backgroundColor: 'white', backgroundAlpha: 0, antialias: !PHONE });
   viewer.setBackgroundColor(0xffffff, 0);
   new ResizeObserver(() => { viewer.resize(); LB.dirty = true; }).observe($('#viewer'));
 }

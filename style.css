@@ -123,8 +123,8 @@ a:hover { text-decoration: underline; }
 /* スクロールエッジ効果：上端だけ内容をぼかして見出しを読みやすくする */
 .edge-top {
   position: absolute; left: var(--left); right: var(--right); top: 0; height: var(--vt); pointer-events: none;
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  -webkit-mask: linear-gradient(#000 55%, transparent); mask: linear-gradient(#000 55%, transparent);
+  /* 毎フレームのぼかし計算を避け、背景色のグラデーションで見出しの裏をやわらかく隠す */
+  background: linear-gradient(var(--bg) 30%, color-mix(in srgb, var(--bg) 70%, transparent) 70%, transparent);
 }
 
 /* 3D の原子ラベル */

@@ -267,14 +267,6 @@ const LiquidGlass = (() => {
     }, { passive: true });
     document.addEventListener('pointerup', release, { passive: true });
     document.addEventListener('pointercancel', release, { passive: true });
-    // パネルの光沢はポインタの位置に追従する
-    window.addEventListener('pointermove', (e) => {
-      for (const el of document.querySelectorAll('[data-glass]')) {
-        const r = el.getBoundingClientRect();
-        el.style.setProperty('--mx', `${e.clientX - r.left}px`);
-        el.style.setProperty('--my', `${e.clientY - r.top}px`);
-      }
-    }, { passive: true });
   }
 
   function scan(root = document) {
