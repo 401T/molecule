@@ -74,7 +74,10 @@ const LiquidGlass = (() => {
     const f = document.createElementNS(NS, 'filter');
     f.id = id;
     for (const [k, val] of Object.entries({ 'color-interpolation-filters': 'sRGB', filterUnits: 'userSpaceOnUse', primitiveUnits: 'userSpaceOnUse', x: 0, y: 0, width: w, height: h })) f.setAttribute(k, val);
-    const base = mode === 'dome' ? -Math.min(26, Math.min(w, h) * 0.5) : Math.min(60, Math.min(w, h) * 0.9);
+    // 低い部品（ピル・ボタン）は上半分が上の景色、下半分が下の景色を引き込むため、強いと中央で色が分かれて見える。
+    // 高さに応じて屈折を弱める
+    const short = Math.min(w, h);
+    const base = mode === 'dome' ? -Math.min(26, short * 0.5) : short < 60 ? short * 0.22 : Math.min(60, short * 0.9);
     const ca = mode === 'dome' ? 0.06 : 0.08;   // 色収差の強さ
     const disp = (s, res) => `<feDisplacementMap in="SourceGraphic" in2="map" scale="${(base * s).toFixed(1)}" xChannelSelector="R" yChannelSelector="G" result="${res}"/>`;
     const img = `<feImage href="${makeMap(w, h, r, mode)}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none" result="map"/>`;
@@ -101,7 +104,7 @@ const LiquidGlass = (() => {
     const r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, w / 2, h / 2);
     const mode = el.dataset.refract === 'dome' ? 'dome' : 'bevel';
     const id = filterFor(Math.ceil(w / 2) * 2, Math.ceil(h / 2) * 2, r, mode);
-    const blur = el.dataset.blur ?? (el.hasAttribute('data-glass') ? 'var(--blur)' : mode === 'dome' ? '0px' : '3px');
+    const blur = el.dataset.blur ?? (el.hasAttribute('data-glass') ? 'var(--blur)' : mode === 'dome' ? '0px' : h < 60 ? '10px' : '3px');
     el.style.backdropFilter = `url(#${id}) blur(${blur}) saturate(190%) brightness(1.04)`;
   }
 

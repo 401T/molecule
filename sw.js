@@ -2,14 +2,13 @@
 /* サービスワーカー：ホーム画面から開いたときに、電波がなくても画面と一度見た分子を出せるようにする。
    ・アプリ本体（HTML・CSS・JS）：ネットワーク優先。公開した新しい版をすぐ使い、つながらないときだけ保存分を使う
      （保存分を先に返すと、新しい HTML と古い CSS が食い違って表示が崩れるため）
-   ・CDN のライブラリ：版つきの URL なので保存分を優先
+   ・ライブラリ（vendor/）とサンプル分子（data/）も同梱し、インストール時にすべて保存する
    ・PubChem / Wikidata の結果：ネットワーク優先、つながらないときは保存分 */
-const VERSION = 'molecule-202611021302-f53d7b9';
+const VERSION = 'molecule-202611021311-1f74665';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'chem.js', 'builder.js', 'glass.js',
-  'icon.svg', 'icon-192.png', 'apple-touch-icon.png', 'manifest.webmanifest',
-  'https://cdn.jsdelivr.net/npm/3dmol@2.4.2/build/3Dmol-min.js',
-  'https://cdn.jsdelivr.net/npm/openchemlib@8.21.0/dist/openchemlib-full.js'
+  'vendor/3Dmol-min.js', 'vendor/openchemlib-full.js', 'data/samples.js',
+  'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest'
 ];
 
 self.addEventListener('install', (e) => {

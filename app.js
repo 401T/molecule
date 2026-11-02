@@ -1103,13 +1103,22 @@ async function generate3D(mol) {
   return best.m;
 }
 
+// 同梱したサンプル分子のデータ（data/samples.js）。電波がなくても表示できる
+async function bundled(cid) {
+  return window.SAMPLE_DATA?.[cid] || null;
+}
+
 async function loadCid(cid, meta = {}) {
   const tok = ++S.token;
   setBusy(true, '構造を取得中');
   try {
+    const local = await bundled(cid);
+    if (local) meta = { ja: local.ja, desc: local.desc, qid: local.qid, ...meta, props: meta.props || local.props };
     const p = meta.props || (await props([cid]))[0];
-    let sdf = null;
-    try { sdf = await getText(`${PUG}/compound/cid/${cid}/record/SDF?record_type=3d`); } catch (e) { if (!(e instanceof NotFound)) throw e; }
+    let sdf = local ? local.sdf : null;
+    if (!local) {
+      try { sdf = await getText(`${PUG}/compound/cid/${cid}/record/SDF?record_type=3d`); } catch (e) { if (!(e instanceof NotFound)) throw e; }
+    }
     if (tok !== S.token) return;
     let mol = null, source = 'pubchem';
     if (sdf && hasOCL()) mol = OCL.Molecule.fromMolfile(sdf);
@@ -1132,7 +1141,7 @@ async function loadCid(cid, meta = {}) {
   } catch (e) {
     if (tok !== S.token) return;
     console.error(e);
-    toast('構造を取得できませんでした', e instanceof NotFound ? 'PubChem にデータがありません。' : '通信エラー：時間をおいて再試行してください。', 'err');
+    toast('構造を取得できませんでした', e instanceof NotFound ? 'PubChem にデータがありません。' : navigator.onLine === false ? 'オフラインです。ライブラリの分子と、一度表示した分子は電波がなくても見られます。' : '通信エラー：時間をおいて再試行してください。', 'err');
   } finally {
     if (tok === S.token) setBusy(false);
   }
@@ -1984,6 +1993,9 @@ function setupInstall() {
   }));
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     navigator.serviceWorker.register('sw.js').catch((e) => console.warn('service worker', e));
+    navigator.serviceWorker.ready.then(showOfflineStatus).catch(() => {});
+  } else {
+    $('#offlineStatus').textContent = app ? 'アプリにすべてのデータを同梱しています。' : '';
   }
 }
 // iPhone / iPad は確認画面を出す API が無いので、共有メニューからの手順を示す
@@ -2005,6 +2017,19 @@ function showInstallSheet() {
   document.body.appendChild(el);
   const close = () => { el.classList.add('closing'); setTimeout(() => el.remove(), 200); };
   el.querySelector('button').addEventListener('click', close);
+}
+
+// 端末に保存したデータの量と、オフラインで使えるかを表示する
+async function showOfflineStatus() {
+  const box = $('#offlineStatus');
+  try {
+    const keys = await caches.keys();
+    let n = 0;
+    for (const k of keys) n += (await (await caches.open(k)).keys()).length;
+    const est = await navigator.storage?.estimate?.();
+    const mb = est?.usage ? `（約 ${(est.usage / 1048576).toFixed(1)} MB）` : '';
+    box.textContent = n ? `オフラインで使う準備ができています。アプリ本体・ライブラリ・サンプル分子を端末に保存済み${mb}。` : '';
+  } catch (e) { box.textContent = ''; }
 }
 
 /* ===== 起動 ===== */
