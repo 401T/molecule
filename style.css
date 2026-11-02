@@ -668,9 +668,11 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   animation: ring-in .25s var(--snap);
 }
 @keyframes ring-in { from { opacity: 0; scale: .7; } }
+.labels .ring.dashed { border-style: dashed; box-shadow: 0 0 0 1.5px rgba(255,255,255,.7), 0 0 10px var(--c); }
+.chip.preview { background: color-mix(in srgb, var(--purple) 16%, var(--cell)); color: var(--purple); }
 .onplane { color: var(--c); font-weight: 700; }
 
-.sheet-btn { display: none; }
+.sheet-ic { display: none !important; }
 
 /* ===== ホーム画面に追加 ===== */
 .install-btn[hidden] { display: none !important; }
@@ -731,7 +733,7 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   body.sheet-min { --sh: calc(var(--sheet-min) + var(--safe-b)); }
   body.sheet-hidden { --sh: 0px; }
   @supports (height: 1svh) { :root { --sheet: 46svh; } }   /* Safari のツールバーが伸び縮みしても高さを変えない */
-  .viewer, .labels { left: 0; top: calc(var(--safe-t) + var(--title-h)); bottom: max(calc(var(--safe-b) + 84px), calc(var(--sh) + 74px)); transition: bottom .25s var(--snap); }
+  .viewer, .labels { left: 0; top: calc(var(--safe-t) + var(--title-h)); bottom: max(calc(var(--safe-b) + 90px), calc(var(--sh) + 86px)); transition: bottom .25s var(--snap); }
   .empty { padding: calc(var(--safe-t) + var(--title-h)) 24px calc(var(--sh) + 80px); }
   .loading { left: 50%; top: calc(var(--safe-t) + var(--title-h) + (100svh - var(--safe-t) - var(--title-h) - var(--sh) - 80px) / 2); }
   .toolbar { top: calc(var(--gap) + var(--safe-t)); right: var(--gap); }
@@ -739,7 +741,7 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   /* 大見出しはコンパクトに：説明と英名は省き、事実のピルは 1 行で横にスクロール */
   .titlebar { top: calc(var(--gap) + 4px + var(--safe-t)); left: 16px; right: 0; pointer-events: auto; }
   .eyebrow, .subtitle, .elements, .source { display: none; }
-  .large-title { font-size: 26px; padding-right: 116px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .large-title { font-size: 26px; padding-right: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .large-title.long { font-size: 21px; } .large-title.xlong { font-size: 17px; }
   .facts { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-top: 18px; padding: 2px 16px 4px 0; }
   .facts::-webkit-scrollbar { display: none; }
@@ -766,14 +768,16 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   body.sheet-hidden .cands { display: none; }
   .tabs { margin: 0 12px; }
   .panes { padding: 2px 14px 28px; }
-  .modebar { bottom: max(calc(14px + var(--safe-b)), calc(8px + var(--sh) + 10px)); left: 12px; right: 76px; transition: bottom .25s var(--snap); }
-  .modebar button { min-width: 0; flex: 1; padding: 6px 8px 5px; }
-  /* タブバーの右に、シートを隠す／出す丸いボタン（iOS の検索タブと同じ配置） */
-  .sheet-btn {
-    display: grid; place-items: center; right: 12px; width: 56px; height: 56px; border: 0; border-radius: 50%; color: var(--label);
-    bottom: max(calc(14px + var(--safe-b)), calc(8px + var(--sh) + 10px)); transition: bottom .25s var(--snap);
+  /* タブバー：画面中央の横長カプセル。項目に十分な幅と余白をとる */
+  .modebar {
+    left: 0; right: 0; margin: 0 auto; width: max-content; max-width: calc(100vw - 24px); padding: 5px; gap: 2px;
+    bottom: max(calc(14px + var(--safe-b)), calc(8px + var(--sh) + 12px)); transition: bottom .25s var(--snap);
   }
-  .sheet-btn svg { width: 24px; height: 24px; stroke-width: 2.2; transition: transform .25s var(--snap); }
-  body.sheet-hidden .sheet-btn svg { transform: rotate(180deg); }
+  .modebar button { flex: none; min-width: 72px; padding: 7px 14px 6px; gap: 3px; font-size: 11px; }
+  .modebar button svg { width: 22px; height: 22px; }
+  /* パネルを隠す／出すボタンは右上のツールバーに置く */
+  .sheet-ic { display: grid !important; }
+  .sheet-ic svg { transition: transform .25s var(--snap); }
+  body.sheet-hidden .sheet-ic svg { transform: rotate(180deg); }
   .toasts { left: var(--gap); right: var(--gap); top: calc(var(--gap) + 60px + var(--safe-t)); }
 }

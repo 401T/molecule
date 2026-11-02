@@ -6,8 +6,9 @@ const WD = 'https://www.wikidata.org/w/api.php';
 const PROPS = 'Title,IUPACName,MolecularFormula,MolecularWeight,ExactMass,SMILES,InChIKey,Charge,XLogP';
 const FF_NAME = 'MMFF94s';
 const SYM_TOL = 0.2;          // 対称判定の許容誤差 [Å]
-// 「厳密に同一平面上」とみなす距離 [Å]。座標の丸め誤差（PubChem は小数 4 桁）だけを許す
-const PLANE_EXACT = 0.005;
+// 同一平面上とみなす距離 [Å]。計算で求めた構造では、対称性から厳密に同一平面に乗るはずの原子でも
+// 数値誤差で 0.001〜0.02 Å ずれる（平面から外れた原子は通常 0.3 Å 以上離れている）
+const PLANE_EXACT = 0.02;
 const PLANE_NEAR = 0.1;
 const PLANE_COLORS = ['#7b4fd0', '#e0702f', '#1f9e89', '#d6336c', '#3b7dd8', '#b5a000'];
 
@@ -417,13 +418,14 @@ function drawLabels(view) {
   if (st.planeMark) {
     for (const [i, colors] of S.onPlane) {
       if (i >= n || !shown(i)) continue;
-      colors.forEach((col, m) => {
+      colors.forEach((mk, m) => {
         let el = LB.rings[rk];
-        if (!el) { el = document.createElement('div'); el.className = 'ring'; $('#labels').appendChild(el); LB.rings[rk] = el; }
+        if (!el) { el = document.createElement('div'); $('#labels').appendChild(el); LB.rings[rk] = el; }
         rk++;
+        el.className = 'ring' + (mk.dashed ? ' dashed' : '');
         const rr = Math.max(9, rad[i] + 4 + m * 5);
         el.style.width = el.style.height = (2 * rr) + 'px';
-        el.style.setProperty('--c', col);
+        el.style.setProperty('--c', mk.color);
         el.style.transform = `translate(${(scr[i][0] - rr).toFixed(1)}px, ${(scr[i][1] - rr).toFixed(1)}px)`;
         el.style.zIndex = 900 + Math.round(dep[i] * 10);
         el.style.display = '';
@@ -572,7 +574,7 @@ function runSymmetry(announce = true) {
 
 /* ===== 平面の作図 ===== */
 function renderPlanes() {
-  $('#planeSel').innerHTML = S.planeSel.map((i, k) => `<span class="chip"><i>${k + 1}</i>${S.names[i]}</span>`).join('');
+  $('#planeSel').innerHTML = S.planeSel.map((i, k) => `<span class="chip"><i>${k + 1}</i>${S.names[i]}</span>`).join('') + planePreviewText();
   $('#planeMake').disabled = S.planeSel.length < 3;
   const atoms = symAtoms();
   $('#planeList').innerHTML = S.planes.map((pl, k) => {
@@ -580,13 +582,16 @@ function renderPlanes() {
     const f = Chem.fitPlane(P);
     const mir = Chem.testMirror(atoms, f.c, f.n, SYM_TOL);
     const dist = S.X.map((p, i) => [i, Math.abs(Chem.dot(Chem.sub(p, f.c), f.n))]);
+    const def = new Set(pl.atoms);
     const on = dist.filter(([, d]) => d <= PLANE_EXACT).map(([i]) => S.names[i]);
+    const extra = dist.filter(([i, d]) => d <= PLANE_EXACT && !def.has(i)).map(([i]) => S.names[i]);
     const near = dist.filter(([, d]) => d > PLANE_EXACT && d <= PLANE_NEAR).map(([i, d]) => `${S.names[i]}（${d.toFixed(3)}）`);
     return `<div class="item"><div class="hd"><span class="sw-c" style="background:${pl.color}"></span><b>平面 ${k + 1}</b>
       <span class="r"><button class="mini-btn${pl.visible ? ' on' : ''}" data-pv="${k}">${pl.visible ? '表示中' : '非表示'}</button><button class="mini-btn" data-pd="${k}">削除</button></span></div>
       <div class="sub">定義：${pl.atoms.map((i) => S.names[i]).join('・')}　RMS ${f.rms.toFixed(3)} Å</div>
       <div class="sub">${mir.ok ? `<span class="ok">✓ 鏡映面</span>（最大ずれ ${mir.worst.toFixed(3)} Å）` : `<span class="ng">× 鏡映面ではない</span>（重ならない原子 ${mir.bad} 個）`}</div>
       <div class="sub"><b class="onplane" style="--c:${pl.color}">同一平面上 ${on.length} 個</b>（|d| ≤ ${PLANE_EXACT} Å）：${on.length ? on.join('、') : 'なし'}</div>
+      <div class="sub">選んだ原子以外で同じ平面に乗る原子：<b class="onplane" style="--c:${pl.color}">${extra.length ? extra.join('、') : 'なし'}</b></div>
       ${near.length ? `<div class="sub">わずかに外れる原子（≤ ${PLANE_NEAR} Å）：${near.join('、')}</div>` : ''}</div>`;
   }).join('');
   $$('#planeList [data-pv]').forEach((b) => b.addEventListener('click', () => { const p = S.planes[+b.dataset.pv]; p.visible = !p.visible; renderPlanes(); drawShapes(); viewer.render(); }));
@@ -594,16 +599,31 @@ function renderPlanes() {
   computeOnPlane();
 }
 
-// 作図した平面・検出した鏡映面に厳密に乗っている原子（3D 画面で輪を付ける）
+// 選択中の原子（3 つ以上）が決める平面
+function previewPlane() {
+  if (S.planeSel.length < 3) return null;
+  return Chem.fitPlane(S.planeSel.map((i) => S.X[i]));
+}
+function planePreviewText() {
+  const f = previewPlane();
+  if (!f) return '';
+  const sel = new Set(S.planeSel);
+  const extra = S.X.map((p, i) => [i, Math.abs(Chem.dot(Chem.sub(p, f.c), f.n))]).filter(([i, d]) => d <= PLANE_EXACT && !sel.has(i)).map(([i]) => S.names[i]);
+  return `<span class="chip preview">${extra.length ? `ほかに同一平面上：${extra.join('、')}` : 'ほかに同一平面上の原子はなし'}</span>`;
+}
+
+// 作図した平面・選択中の平面・検出した鏡映面に乗っている原子（3D 画面で輪を付ける）
 function computeOnPlane() {
   S.onPlane = new Map();
-  const mark = (c, n, color) => S.X.forEach((p, i) => {
+  const mark = (c, n, color, dashed) => S.X.forEach((p, i) => {
     if (Math.abs(Chem.dot(Chem.sub(p, c), n)) > PLANE_EXACT) return;
     if (!S.onPlane.has(i)) S.onPlane.set(i, []);
-    S.onPlane.get(i).push(color);
+    S.onPlane.get(i).push({ color, dashed });
   });
-  S.planes.forEach((pl) => { if (pl.visible) { const f = Chem.fitPlane(pl.atoms.map((i) => S.X[i])); mark(f.c, f.n, pl.color); } });
-  if (S.sym && S.symShow) S.sym.planes.forEach((pl) => mark(pl.c, pl.n, '#03af7a'));
+  S.planes.forEach((pl) => { if (pl.visible) { const f = Chem.fitPlane(pl.atoms.map((i) => S.X[i])); mark(f.c, f.n, pl.color, false); } });
+  const pv = previewPlane();
+  if (pv) mark(pv.c, pv.n, '#af52de', true);
+  if (S.sym && S.symShow) S.sym.planes.forEach((pl) => mark(pl.c, pl.n, '#03af7a', false));
   LB.dirty = true;
 }
 
