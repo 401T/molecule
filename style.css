@@ -83,6 +83,7 @@
 /* ===== ベース ===== */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; }
+html { background: var(--bg); }
 body {
   background: var(--bg); color: var(--label);
   font-family: var(--font); font-size: 15px; line-height: 1.35; letter-spacing: -.01em;
@@ -692,6 +693,29 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 .install-sheet li svg { width: 22px; height: 22px; color: var(--blue); flex: none; display: inline-block; vertical-align: -5px; }
 .install-sheet .btn { width: 100%; }
 
+/* ===== サイズのスライダー（iOS 設定と同じ形：両端にアイコン、下に値） ===== */
+.size-list { display: flex; flex-direction: column; gap: 10px; }
+.size-card { background: var(--cell); border-radius: var(--r-group); padding: 14px 16px 12px; }
+.sc-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.sc-head span { font-size: 15px; font-weight: 600; }
+.sc-head small { font-size: 12px; color: var(--label2); }
+.sc-track { display: flex; align-items: center; gap: 12px; }
+.sc-ic { width: 26px; height: 26px; flex: none; color: var(--label3); }
+.sc-track .range { flex: 1; grid-column: auto; }
+.size-card .range { height: 36px; }
+/* 溝は自前で描いて中央にそろえる（入力欄そのものは透明にして操作だけ受ける） */
+.size-card .range::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 8px; margin-top: -4px; border-radius: 999px; background: var(--fill2); pointer-events: none; }
+.size-card input[type=range] { position: relative; z-index: 1; height: 36px; width: 100%; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
+.size-card input[type=range]::-webkit-slider-runnable-track { height: 36px; background: transparent; }
+.size-card input[type=range]::-webkit-slider-thumb { margin-top: 4px; }
+.size-card input[type=range]::-moz-range-track { background: transparent; }
+.size-card input[type=range]::-moz-range-progress { background: transparent; }
+.size-card .range .knob { z-index: 2; }
+.size-card .range .knob { width: 44px; height: 28px; margin-top: -14px; left: calc((100% - 44px) * var(--pf, .5)); }
+/* 既定値の位置の点 */
+.size-card .range .tick { position: absolute; top: calc(50% + 10px); left: calc(22px + (100% - 44px) * var(--tf)); width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--label3); pointer-events: none; }
+.sc-value { display: block; text-align: center; margin-top: 6px; font-size: 20px; font-weight: 400; font-feature-settings: "tnum"; color: var(--label); }
+
 /* ===== Mac アプリ（Electron） ===== */
 .drag-strip { display: none; }
 .app .drag-strip { display: block; position: fixed; z-index: 9; left: 0; right: 0; top: 0; height: 52px; -webkit-app-region: drag; }
@@ -749,11 +773,11 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   .fact.formula { font-size: 14px; }
   .edge-top { display: none; }
   .inspector {
-    left: 8px; right: 8px; bottom: calc(8px + var(--safe-b)); top: auto; width: auto; height: var(--sheet);
-    border-radius: 38px; padding-top: 70px; transition: height .25s var(--snap), transform .3s var(--snap), opacity .2s;
+    left: 8px; right: 8px; bottom: 8px; top: auto; width: auto; height: calc(var(--sheet) + var(--safe-b));
+    border-radius: max(38px, calc(var(--safe-b) + 14px));   /* 画面の角と同心円になる丸み */ padding-top: 70px; transition: height .25s var(--snap), transform .3s var(--snap), opacity .2s;
     touch-action: pan-y; overflow: hidden;   /* 中身を角丸のシートの内側に収める */
   }
-  .inspector.min { height: var(--sheet-min); }
+  .inspector.min { height: calc(var(--sheet-min) + var(--safe-b)); }
   body.sheet-hidden .inspector { transform: translateY(calc(100% + 40px)); opacity: 0; pointer-events: none; }
   .grabber { display: block; position: absolute !important; top: 0; left: 0; right: 0; width: 100%; height: 26px; border: 0; background: transparent; touch-action: none; }
   .grabber::before { content: ""; position: absolute; left: 50%; top: 7px; width: 38px; height: 5px; border-radius: 999px; background: var(--label3); transform: translateX(-50%); }
@@ -767,7 +791,7 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   .cands { left: 8px; right: 8px; width: auto; top: auto; bottom: calc(8px + var(--sh) + 8px); max-height: 40vh; }
   body.sheet-hidden .cands { display: none; }
   .tabs { margin: 0 12px; }
-  .panes { padding: 2px 14px 28px; }
+  .panes { padding: 2px 14px calc(28px + var(--safe-b)); }
   /* タブバー：画面中央の横長カプセル。項目に十分な幅と余白をとる */
   .modebar {
     left: 0; right: 0; margin: 0 auto; width: max-content; max-width: calc(100vw - 24px); padding: 5px; gap: 2px;

@@ -27,13 +27,22 @@ const SAMPLES = [
     ['コレステロール', 5997], ['六フッ化硫黄', 17358], ['フラーレン C60', 123591]]]
 ];
 
+// サイズのスライダー：両端のアイコン（小・大）と、下に表示する値の書式
+const pct = (v) => `${Math.round(v * 100)}%`;
+const SZ_IC = {
+  ball: ['<circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/>', '<circle cx="12" cy="12" r="8.5" fill="currentColor" stroke="none"/>'],
+  bar: ['<rect x="3" y="11" width="18" height="2" rx="1" fill="currentColor" stroke="none"/>', '<rect x="3" y="8" width="18" height="8" rx="4" fill="currentColor" stroke="none"/>'],
+  text: ['<text x="12" y="16" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor" stroke="none">A</text>', '<text x="12" y="19.5" text-anchor="middle" font-size="19" font-weight="700" fill="currentColor" stroke="none">A</text>'],
+  grid: ['<path d="M4 4h16v16H4zM8 4v16M12 4v16M16 4v16M4 8h16M4 12h16M4 16h16" stroke-width="1.4"/>', '<path d="M4 4h16v16H4zM12 4v16M4 12h16" stroke-width="1.6"/>']
+};
 const SLIDERS = [
-  { key: 'sphere', label: '球の大きさ', note: '球棒・vdW半径比', min: 0.05, max: 1, step: 0.01, unit: '×' },
-  { key: 'fill', label: '空間充填の球', note: 'vdW半径比', min: 0.3, max: 1.3, step: 0.01, unit: '×' },
-  { key: 'hScale', label: '水素の球', note: '他原子に対する倍率', min: 0.3, max: 1.5, step: 0.01, unit: '×' },
-  { key: 'stick', label: '棒の太さ', note: '半径', min: 0.02, max: 0.5, step: 0.005, unit: 'Å' },
-  { key: 'labelScale', label: 'ラベルの文字', note: '倍率', min: 0.5, max: 2.5, step: 0.05, unit: '×' }
+  { key: 'sphere', label: '球の大きさ', note: '球棒モデル・ファンデルワールス半径に対する割合', min: 0.05, max: 1, step: 0.01, icon: 'ball', fmt: pct },
+  { key: 'fill', label: '空間充填の球', note: 'ファンデルワールス半径に対する割合', min: 0.3, max: 1.3, step: 0.01, icon: 'ball', fmt: pct },
+  { key: 'hScale', label: '水素の球', note: 'ほかの原子に対する割合', min: 0.3, max: 1.5, step: 0.01, icon: 'ball', fmt: pct },
+  { key: 'stick', label: '棒の太さ', note: '結合の半径', min: 0.02, max: 0.5, step: 0.005, icon: 'bar', fmt: (v) => `${v.toFixed(3)} Å` },
+  { key: 'labelScale', label: 'ラベルの文字', note: '原子名の大きさ', min: 0.5, max: 2.5, step: 0.05, icon: 'text', fmt: pct }
 ];
+const GRID_SLIDER = { key: 'planeGrid', label: '平面の格子間隔', note: '作図した平面の目の細かさ', min: 0.25, max: 2, step: 0.05, icon: 'grid', fmt: (v) => `${v.toFixed(2)} Å` };
 const DEFAULTS = {
   style: 'ballstick', sphere: 0.25, fill: 1.0, hScale: 0.8, stick: 0.13, labelScale: 1, labels: 'name',
   showH: true, multi: true, stereo: true, surface: false, planeGrid: 0.6, planeMark: true, glass: true, symNoH: false
@@ -315,7 +324,7 @@ function drawPlane(P, colorHex, grid, given) {
 // 全体が収まるように表示し、小さな分子は 1 Å ≒ 60 px までに抑える
 function fitView() {
   viewer.zoomTo();
-  viewer.zoom(innerWidth <= 760 ? 0.72 : 0.9);
+  viewer.zoom(0.9);
   const ax = viewAxes();
   const a = viewer.modelToScreen(v(ax.center)), b = viewer.modelToScreen(v(Chem.add(ax.center, ax.right)));
   const ppa = Math.hypot(b.x - a.x, b.y - a.y);
@@ -1204,32 +1213,37 @@ function syncRangeFill(inp) {
   const p = ((+inp.value - +inp.min) / (+inp.max - +inp.min)) * 100;
   inp.style.setProperty('--p', p + '%');
 }
+// iOS の設定（読み上げ速度など）と同じ形：両端に小・大のアイコン、下に値。値は手入力しない
 function sliderHTML(d, val) {
-  const dec = (String(d.step).split('.')[1] || '').length;
-  return `<div class="slider-row"><label for="s-${d.key}">${d.label}<small>${d.note}</small></label>
-    <span class="num"><input type="number" id="n-${d.key}" min="${d.min}" max="${d.max}" step="${d.step}" value="${(+val).toFixed(dec)}"><span class="unit">${d.unit}</span></span>
-    <input type="range" id="s-${d.key}" min="${d.min}" max="${d.max}" step="${d.step}" value="${val}"></div>`;
+  const [lo, hi] = SZ_IC[d.icon];
+  return `<div class="size-card">
+    <div class="sc-head"><span>${d.label}</span><small>${d.note}</small></div>
+    <div class="sc-track"><svg class="sc-ic" viewBox="0 0 24 24" aria-hidden="true">${lo}</svg>
+      <input type="range" id="s-${d.key}" min="${d.min}" max="${d.max}" step="${d.step}" value="${val}" aria-label="${d.label}" aria-valuetext="${d.fmt(+val)}">
+      <svg class="sc-ic" viewBox="0 0 24 24" aria-hidden="true">${hi}</svg></div>
+    <output class="sc-value" id="v-${d.key}" for="s-${d.key}">${d.fmt(+val)}</output></div>`;
 }
 function buildSliders() {
   $('#sliders').innerHTML = SLIDERS.map((d) => sliderHTML(d, S.set[d.key])).join('');
-  $('#planeOpacityRow').outerHTML = sliderHTML({ key: 'planeGrid', label: '平面の格子間隔', note: '', min: 0.25, max: 2, step: 0.05, unit: 'Å' }, S.set.planeGrid);
-  for (const d of [...SLIDERS, { key: 'planeGrid', step: 0.05 }]) {
-    const r = $(`#s-${d.key}`), n = $(`#n-${d.key}`);
-    const dec = (String(d.step).split('.')[1] || '').length;
+  $('#planeOpacityRow').outerHTML = sliderHTML(GRID_SLIDER, S.set.planeGrid);
+  for (const d of [...SLIDERS, GRID_SLIDER]) {
+    const r = $(`#s-${d.key}`), out = $(`#v-${d.key}`);
     syncRangeFill(r);
+    // 既定値の位置に小さな点を付ける
+    const tick = document.createElement('span');
+    tick.className = 'tick';
+    tick.style.setProperty('--tf', (DEFAULTS[d.key] - d.min) / (d.max - d.min));
+    r.parentElement.appendChild(tick);
     let raf = 0;
-    const set = (val, from) => {
-      val = Math.min(+r.max, Math.max(+r.min, +val));
-      if (!Number.isFinite(val)) return;
+    r.addEventListener('input', () => {
+      const val = +r.value;
       S.set[d.key] = val;
-      if (from !== r) r.value = val;
-      if (from !== n) n.value = val.toFixed(dec);
+      out.textContent = d.fmt(val);
+      r.setAttribute('aria-valuetext', d.fmt(val));
       syncRangeFill(r);
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => { applyStyle(); saveSettings(); });
-    };
-    r.addEventListener('input', () => set(r.value, r));
-    n.addEventListener('change', () => set(n.value, n));
+    });
   }
 }
 
@@ -1247,6 +1261,10 @@ const THEMES = ['auto', 'light', 'dark'], THEME_JA = { auto: '自動', light: '�
 function applyTheme(t) {
   if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
   $('#themeBtn span').textContent = THEME_JA[t];
+  $$('#themeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.themeOpt === t));
+  // ステータスバー（ホーム画面から開いたとき）の色も合わせる
+  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  $$('meta[name="theme-color"]').forEach((m) => { m.content = dark ? '#05060a' : '#eef1f8'; m.removeAttribute('media'); });
   store.set('ml.theme', t);
 }
 
@@ -1386,9 +1404,14 @@ function bind() {
     renderSide();
   }));
   $('#themeBtn').addEventListener('click', () => applyTheme(THEMES[(THEMES.indexOf(store.get('ml.theme', 'auto')) + 1) % 3]));
+  $('#themeSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) applyTheme(b.dataset.themeOpt); });
+  applyTheme(store.get('ml.theme', 'auto'));
   const glassBtn = $('#glassBtn');
   const syncGlass = () => { LiquidGlass.setEnabled(S.set.glass); glassBtn.querySelector('span').textContent = LiquidGlass.supported ? `屈折 ${S.set.glass ? 'オン' : 'オフ'}` : '屈折 非対応'; glassBtn.disabled = !LiquidGlass.supported; };
-  glassBtn.addEventListener('click', () => { S.set.glass = !S.set.glass; saveSettings(); syncGlass(); });
+  glassBtn.addEventListener('click', () => { S.set.glass = !S.set.glass; $('#tGlass').checked = S.set.glass; saveSettings(); syncGlass(); });
+  $('#tGlass').checked = S.set.glass;
+  $('#tGlass').disabled = !LiquidGlass.supported;
+  $('#tGlass').addEventListener('change', () => { S.set.glass = $('#tGlass').checked; saveSettings(); syncGlass(); });
   syncGlass();
 
   window.addEventListener('hashchange', fromHash);
