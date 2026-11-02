@@ -428,7 +428,7 @@ function drawLabels(view) {
     if (st.labels === 'name' || (st.labels === 'heavy' && e !== 'H')) text = S.names[i];
     else if (st.labels === 'elem') text = e;
     if ((s || warn) && !text) text = e;
-    if (!text || (!s && !warn && occluded(i))) continue;
+    if (!text || (!warn && occluded(i))) continue;   // 手前の球に隠れる原子のラベルは出さない（不斉中心は 3D の金色の輪で示す）
     const fs = big ? Math.max(7, Math.min(16, rad[i] * 0.62)) * st.labelScale : 10 * st.labelScale;
     const hw = (text.length * 0.32 + (s ? 1.2 : 0)) * fs, hh = fs * 0.5;
     const ly = scr[i][1] - (big ? 0 : rad[i] + 8);
@@ -503,6 +503,9 @@ function renderModel({ resetView = false } = {}) {
   viewer.setClickable({}, true, onAtomClick);
   applyStyle();
   if (resetView) fitView(); else viewer.setView(view);
+  // 拡大してもカメラが分子の内側へ入らないようにする（入ると手前の原子が描かれず消えて見える）
+  const cen = Chem.centroid(S.X);
+  viewer.setZoomLimits(Math.max(...S.X.map((p) => Chem.dist(p, cen))) + 4, 2000);
   viewer.render();
   if (S.spin) viewer.spin('y', 0.6);
   LB.dirty = true;
