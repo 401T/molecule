@@ -699,7 +699,7 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 .install-btn[hidden] { display: none !important; }
 .sidebar .install-btn { width: 100%; margin-top: 6px; }
 .install-sheet {
-  position: fixed; z-index: 70; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; width: min(420px, calc(100vw - 20px));
+  position: fixed; z-index: 70; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px) - var(--pwa-gap, 0px)); translate: -50% 0; width: min(420px, calc(100vw - 20px));
   border-radius: 34px; background: var(--glass-strong); padding: 22px 22px 18px; animation: sheet-up .3s var(--snap);
 }
 .install-sheet.closing { animation: sheet-down .2s ease-in forwards; }
@@ -809,10 +809,12 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
     --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px);
     --title-h: 160px;   /* ツールバー＋大見出しの高さ。分子はこの下から描く */
     --sh: calc(var(--sheet) + var(--safe-b));
+    --b0: calc(0px - var(--pwa-gap, 0px));   /* 画面の本当の下端 */
   }
   body.sheet-min { --sh: calc(var(--sheet-min) + var(--safe-b)); }
   body.sheet-hidden { --sh: 0px; }
   @supports (height: 1svh) { :root { --sheet: 46svh; } }   /* Safari のツールバーが伸び縮みしても高さを変えない */
+  .stage { bottom: var(--b0); }
   .viewer, .labels { left: 0; top: calc(var(--safe-t) + var(--title-h)); bottom: max(calc(var(--safe-b) + 64px), calc(var(--sh) + 66px)); transition: bottom .25s var(--snap); }
   .empty { padding: calc(var(--safe-t) + var(--title-h)) 24px calc(var(--sh) + 80px); }
   .loading { left: 50%; top: calc(var(--safe-t) + var(--title-h) + (100svh - var(--safe-t) - var(--title-h) - var(--sh) - 80px) / 2); }
@@ -829,7 +831,7 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   .fact.formula { font-size: 14px; }
   .edge-top { display: none; }
   .inspector {
-    left: 8px; right: 8px; bottom: 8px; top: auto; width: auto; height: calc(var(--sheet) + var(--safe-b));
+    left: 8px; right: 8px; bottom: calc(8px + var(--b0)); top: auto; width: auto; height: calc(var(--sheet) + var(--safe-b));
     border-radius: max(38px, calc(var(--safe-b) + 14px));   /* 画面の角と同心円になる丸み */ padding-top: 70px; transition: height .25s var(--snap), transform .3s var(--snap), opacity .2s;
     touch-action: pan-y; overflow: hidden;   /* 中身を角丸のシートの内側に収める */
   }
@@ -838,19 +840,19 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   .grabber { display: block; position: absolute !important; top: 0; left: 0; right: 0; width: 100%; height: 26px; border: 0; background: transparent; touch-action: none; }
   .grabber::before { content: ""; position: absolute; left: 50%; top: 7px; width: 38px; height: 5px; border-radius: 999px; background: var(--label3); transform: translateX(-50%); }
   .search {
-    left: 22px; right: 22px; width: auto; top: auto; bottom: calc(8px + var(--sh) - 64px); padding: 0; background: none; box-shadow: none;
+    left: 22px; right: 22px; width: auto; top: auto; bottom: calc(8px + var(--sh) - 64px + var(--b0)); padding: 0; background: none; box-shadow: none;
     -webkit-backdrop-filter: none; backdrop-filter: none; transition: bottom .25s var(--snap), opacity .2s;
   }
   body.sheet-hidden .search { opacity: 0; pointer-events: none; }
   .field { height: 44px; }
   .menu-btn { display: none; }
-  .cands { left: 8px; right: 8px; width: auto; top: auto; bottom: calc(8px + var(--sh) + 8px); max-height: 40vh; }
+  .cands { left: 8px; right: 8px; width: auto; top: auto; bottom: calc(8px + var(--sh) + 8px + var(--b0)); max-height: 40vh; }
   body.sheet-hidden .cands { display: none; }
   .tabs { margin: 0 12px; }
   .panes { padding: 2px 14px calc(28px + var(--safe-b)); }
   /* タブバー：画面中央の横長カプセル。項目に十分な幅と余白をとる */
   /* タップ操作の表示はシートのすぐ上に */
-  .mode-hint { left: 0; right: 0; bottom: max(calc(14px + var(--safe-b)), calc(8px + var(--sh) + 12px)); transition: bottom .25s var(--snap); }
+  .mode-hint { left: 0; right: 0; bottom: calc(max(calc(14px + var(--safe-b)), calc(8px + var(--sh) + 12px)) + var(--b0)); transition: bottom .25s var(--snap); }
   /* パネルを隠す／出すボタンは右上のツールバーに置く */
   .sheet-ic { display: grid !important; }
   .sheet-ic svg { transition: transform .25s var(--snap); }
