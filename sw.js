@@ -4,11 +4,11 @@
      （保存分を先に返すと、新しい HTML と古い CSS が食い違って表示が崩れるため）
    ・ライブラリ（vendor/）とサンプル分子（data/）も同梱し、インストール時にすべて保存する
    ・PubChem / Wikidata の結果：ネットワーク優先、つながらないときは保存分 */
-const VERSION = 'molecule-202611021331-ac76858';
+const VERSION = 'molecule-202611021339-8012fce';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'chem.js', 'builder.js', 'glass.js',
   'vendor/3Dmol-min.js', 'vendor/openchemlib-full.js', 'data/samples.js',
-  'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest'
+  'icon.svg', 'logo.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest'
 ];
 
 self.addEventListener('install', (e) => {

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5cb8ff"/><stop offset=".55" stop-color="#2a7bf6"/><stop offset="1" stop-color="#1f4fd8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".38" r=".62">
+      <stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ball" cx=".36" cy=".3" r=".78">
+      <stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#f1f6ff"/><stop offset="1" stop-color="#b4c9f3"/>
+    </radialGradient>
+    <radialGradient id="rim" cx=".5" cy=".5" r=".5">
+      <stop offset=".82" stop-color="#1c4fc4" stop-opacity="0"/><stop offset="1" stop-color="#1c4fc4" stop-opacity=".22"/>
+    </radialGradient>
+    <linearGradient id="stick" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9d9f8"/><stop offset=".35" stop-color="#ffffff"/><stop offset="1" stop-color="#9fb8ea"/>
+    </linearGradient>
+    <filter id="drop" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="22" stdDeviation="26" flood-color="#0b2a86" flood-opacity=".38"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <g transform="translate(512 512) scale(1) translate(-512 -512)" filter="url(#drop)"><circle cx="503.4" cy="723.1" r="59.2" fill="url(#ball)"/><circle cx="503.4" cy="723.1" r="59.2" fill="url(#rim)"/><circle cx="503.4" cy="723.1" r="59.2" fill="#2a6ff0" fill-opacity="0.21"/><circle cx="512.0" cy="288.7" r="61.4" fill="url(#ball)"/><circle cx="512.0" cy="288.7" r="61.4" fill="url(#rim)"/><circle cx="512.0" cy="288.7" r="61.4" fill="#2a6ff0" fill-opacity="0.16"/><g opacity="0.88"><g transform="translate(509.1 590.3) rotate(92.48)"><rect x="0" y="-20.04055510332919" width="96.8" height="40.08111020665838" rx="20.04055510332919" fill="url(#stick)"/></g></g><g opacity="0.90"><g transform="translate(512.0 447.5) rotate(-90.00)"><rect x="0" y="-20.453786434703975" width="114.9" height="40.90757286940795" rx="20.453786434703975" fill="url(#stick)"/></g></g><circle cx="512.0" cy="524.0" r="100.0" fill="url(#ball)"/><circle cx="512.0" cy="524.0" r="100.0" fill="url(#rim)"/><g opacity="1.00"><g transform="translate(592.3 530.5) rotate(4.63)"><rect x="0" y="-24.0702500624085" width="153.3" height="48.140500124817" rx="24.0702500624085" fill="url(#stick)"/></g></g><g opacity="1.00"><g transform="translate(434.6 527.8) rotate(177.22)"><rect x="0" y="-24.27989205447314" width="149.4" height="48.55978410894628" rx="24.27989205447314" fill="url(#stick)"/></g></g><circle cx="817.4" cy="548.7" r="82.8" fill="url(#ball)"/><circle cx="817.4" cy="548.7" r="82.8" fill="url(#rim)"/><circle cx="213.8" cy="538.5" r="84.2" fill="url(#ball)"/><circle cx="213.8" cy="538.5" r="84.2" fill="url(#rim)"/></g></svg>

@@ -1232,61 +1232,85 @@ async function search(raw, mode = 'auto') {
   if (!q) return;
   const kind = mode === 'auto' ? classify(q) : mode === 'name' ? (hasJapanese(q) ? 'ja' : 'name') : mode;
   $('#cands').hidden = true;
+  // 自分で作って保存した分子：名前が一致すればそれを開き、名前の一部や分子式が合うものは候補の先頭に並べる
+  S.mine = kind === 'cid' || kind === 'smiles' ? [] : savedMatches(q);
+  const exact = S.mine.find((e) => e.name.toLowerCase() === q.toLowerCase());
+  if (exact) { loadSaved(exact.id); showCands([], `「${q}」の候補`, exact.id); return; }
   setBusy(true);
   const tok = S.token;
   try {
-    if (kind === 'cid') return await loadCid(+q.replace(/\D/g, ''));
-    if (kind === 'formula') {
-      const counts = parseFormula(q);
-      if (!counts) throw new NotFound('formula');
-      const hf = hill(counts);
-      const ps = await props(await cidsByFormula(hf));
-      if (tok !== S.token) return;
-      showCands(ps, `分子式 ${hf} の候補（PubChem で参照の多い順）`);
-      return await loadCid(ps[0].CID, { props: ps[0] });
-    }
-    if (kind === 'smiles') {
-      let cids = [];
-      try { cids = await cidsBySmiles(q); } catch (e) { if (!(e instanceof NotFound)) throw e; }
-      if (cids.length) return await loadCid(cids[0]);
-      if (!hasOCL()) throw new NotFound('smiles');
-      return await loadSmilesLocal(q);
-    }
-    if (kind === 'ja') {
-      const hits = await wikidataSearch(q, 'ja');
-      if (!hits.length) throw new NotFound('ja');
-      if (hits.length > 1) {
-        const ps = await props([...new Set(hits.map((h) => h.cid))]);
-        const byCid = Object.fromEntries(ps.map((p) => [p.CID, p]));
-        showCands(hits.filter((h) => byCid[h.cid]).map((h) => ({ ...byCid[h.cid], _ja: h.ja, _meta: h })), `「${q}」の候補`);
+    await (async () => {
+      if (kind === 'cid') return await loadCid(+q.replace(/\D/g, ''));
+      if (kind === 'formula') {
+        const counts = parseFormula(q);
+        if (!counts) throw new NotFound('formula');
+        const hf = hill(counts);
+        const ps = await props(await cidsByFormula(hf));
+        if (tok !== S.token) return;
+        showCands(ps, `分子式 ${hf} の候補（PubChem で参照の多い順）`);
+        return await loadCid(ps[0].CID, { props: ps[0] });
       }
-      return await loadCid(hits[0].cid, hits[0]);
-    }
-    try {
-      return await loadCid((await cidsByName(q))[0]);
-    } catch (e) {
-      if (!(e instanceof NotFound)) throw e;
-      const hits = await wikidataSearch(q, 'en');
-      if (!hits.length) throw e;
-      return await loadCid(hits[0].cid, hits[0]);
-    }
+      if (kind === 'smiles') {
+        let cids = [];
+        try { cids = await cidsBySmiles(q); } catch (e) { if (!(e instanceof NotFound)) throw e; }
+        if (cids.length) return await loadCid(cids[0]);
+        if (!hasOCL()) throw new NotFound('smiles');
+        return await loadSmilesLocal(q);
+      }
+      if (kind === 'ja') {
+        const hits = await wikidataSearch(q, 'ja');
+        if (!hits.length) throw new NotFound('ja');
+        if (hits.length > 1) {
+          const ps = await props([...new Set(hits.map((h) => h.cid))]);
+          const byCid = Object.fromEntries(ps.map((p) => [p.CID, p]));
+          showCands(hits.filter((h) => byCid[h.cid]).map((h) => ({ ...byCid[h.cid], _ja: h.ja, _meta: h })), `「${q}」の候補`);
+        }
+        return await loadCid(hits[0].cid, hits[0]);
+      }
+      try {
+        return await loadCid((await cidsByName(q))[0]);
+      } catch (e) {
+        if (!(e instanceof NotFound)) throw e;
+        const hits = await wikidataSearch(q, 'en');
+        if (!hits.length) throw e;
+        return await loadCid(hits[0].cid, hits[0]);
+      }
+    })();
+    // PubChem の結果を開いたあとも、合う保存分子があれば候補に出しておく
+    if (S.mine.length && $('#cands').hidden) showCands([], `保存した分子の候補`);
   } catch (e) {
     if (tok !== S.token) return;
     console.error(e);
+    if (S.mine.length) {   // PubChem になくても、保存した分子に候補があればそれを出す
+      setBusy(false);
+      showCands([], `保存した分子の候補（PubChem には「${q}」がありません）`);
+      return;
+    }
     const label = { formula: '分子式', smiles: 'SMILES', ja: '和名', name: '名称', cid: 'CID' }[kind];
     toast('見つかりませんでした', e instanceof NotFound ? `「${q}」を${label}として検索しましたが該当がありません。` : '通信エラー：時間をおいて再試行してください。', 'err');
     setBusy(false);
   }
 }
 
-function showCands(list, heading) {
-  const box = $('#cands');
-  box.innerHTML = `<div class="ch"><span>${esc(heading)}</span><button type="button" id="candClose">閉じる ✕</button></div>` + list.map((p, i) =>
-    `<button type="button" class="cand${i === 0 ? ' on' : ''}" data-i="${i}"><b>${esc(p._ja || p.Title || 'CID ' + p.CID)}</b><span>${esc(p.IUPACName || '')}${p.IUPACName ? ' ・ ' : ''}CID ${p.CID}</span></button>`).join('');
+// 保存した分子のうち、名前の一部か分子式が検索語に合うもの
+function savedMatches(q) {
+  const k = q.toLowerCase(), c = parseFormula(q), f = c ? hill(c) : null;
+  return savedList().filter((e) => e.name.toLowerCase().includes(k) || (f && e.formula === f));
+}
+
+// 候補の一覧。保存した分子（S.mine）を先頭に、PubChem の候補をその後に並べる。onSaved は選択中の保存分子
+function showCands(list, heading, onSaved = null) {
+  const box = $('#cands'), mine = S.mine || [];
+  if (!list.length && !mine.length) { box.hidden = true; return; }
+  box.innerHTML = `<div class="ch"><span>${esc(heading)}</span><button type="button" id="candClose">閉じる ✕</button></div>` +
+    mine.map((e) => `<button type="button" class="cand${e.id === onSaved ? ' on' : ''}" data-s="${e.id}"><b>${esc(e.name)}</b><span>${esc(e.formula)} ・ 保存した分子</span></button>`).join('') +
+    list.map((p, i) =>
+    `<button type="button" class="cand${i === 0 && onSaved == null ? ' on' : ''}" data-i="${i}"><b>${esc(p._ja || p.Title || 'CID ' + p.CID)}</b><span>${esc(p.IUPACName || '')}${p.IUPACName ? ' ・ ' : ''}CID ${p.CID}</span></button>`).join('');
   box.hidden = false;
   $('#candClose').addEventListener('click', () => { box.hidden = true; });
   box.querySelectorAll('.cand').forEach((b) => b.addEventListener('click', () => {
     box.querySelectorAll('.cand').forEach((x) => x.classList.toggle('on', x === b));
+    if (b.dataset.s) { loadSaved(+b.dataset.s); return; }
     const p = list[+b.dataset.i];
     loadCid(p.CID, { props: p, ...(p._meta || {}) });
   }));
