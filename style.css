@@ -833,6 +833,14 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   .loading { left: 50%; top: calc(var(--safe-t) + var(--title-h) + (100svh - var(--safe-t) - var(--title-h) - var(--sh) - 80px) / 2); }
   .toolbar { top: calc(var(--gap) + var(--safe-t)); right: var(--gap); }
   .toolbar .capsule:first-child { display: none; }
+  .m-brand .app-icon { display: none; }   /* スマホでは名前だけ */
+  /* 背景の色のにじみ：画面幅基準だとスマホでは小さく消えてしまうので、縦長の画面に合わせて大きくし、
+     分子が見える範囲に置く。ぼかしフィルタは使わず、柔らかい放射グラデーションだけで描く（軽くて iPhone でも確実） */
+  .backdrop i, .backdrop::after { filter: none; }
+  .backdrop .b1 { width: 150vw; height: 150vw; left: -45vw; top: -40vw; background: radial-gradient(circle, var(--blob1), transparent 62%); }
+  .backdrop .b2 { width: 140vw; height: 140vw; right: -60vw; left: auto; top: 30svh; bottom: auto; background: radial-gradient(circle, var(--blob2), transparent 62%); }
+  .backdrop .b3 { width: 130vw; height: 130vw; left: -50vw; top: 52svh; background: radial-gradient(circle, var(--blob3), transparent 62%); }
+  .backdrop::after { width: 110vw; height: 110vw; right: -35vw; top: -25vw; background: radial-gradient(circle, var(--blob4), transparent 62%); opacity: .7; }
   /* 左上にロゴと名前（右のツールバーのカプセル 50px と縦の中心をそろえる） */
   .m-brand { display: flex; align-items: center; gap: 10px; position: fixed; z-index: 9500; pointer-events: none;
     top: calc(var(--gap) + var(--safe-t)); left: 16px; height: 50px; }
