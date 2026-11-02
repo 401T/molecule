@@ -416,11 +416,25 @@ function rotq(q, p) {   // 四元数 q = [x,y,z,w] でベクトルを回す
 function labelLoop() {
   requestAnimationFrame(labelLoop);
   if (!S.model) return;
+  guardView();
   const view = viewer.getView();
   const key = view.map((x) => x.toFixed(5)).join(',');
   if (!LB.dirty && key === LB.key) return;
   LB.key = key; LB.dirty = false;
   drawLabels(view);
+}
+// 分子が丸ごと見えなくなるのを防ぐ見張り（視点が変わるたびに確かめる）
+// ・3Dmol.js は 3 本指の操作で描画する奥行きの範囲（スラブ）を狭めるため、素早く回すと
+//   3 本指と判定されて分子全体が範囲外になることがある → 範囲を分子より十分広く戻す
+// ・描画領域を失っていたら作り直す
+let guardT = 0;
+function guardView() {
+  const now = performance.now();
+  if (now - guardT < 250) return;
+  guardT = now;
+  if (glLost()) { rebuildViewer(); return; }
+  const sl = viewer.getSlab?.();
+  if (sl && (sl.near > -60 || sl.far < 60)) { viewer.setSlab(-200, 200); viewer.render(); }
 }
 function labelEl(k) {
   let el = LB.pool[k];
@@ -545,6 +559,7 @@ function renderModel({ resetView = false } = {}) {
   // 拡大してもカメラが分子の内側へ入らないようにする（入ると手前の原子が描かれず消えて見える）
   const cen = Chem.centroid(S.X);
   viewer.setZoomLimits(Math.max(...S.X.map((p) => Chem.dist(p, cen))) + 4, 2000);
+  viewer.setSlab(-200, 200);
   viewer.render();
   if (S.spin) viewer.spin('y', 0.6);
   LB.dirty = true;
