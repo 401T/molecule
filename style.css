@@ -234,6 +234,7 @@ a:hover { text-decoration: underline; }
 .app-icon::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.45), transparent 50%); }
 .app-icon svg { width: 25px; height: 25px; stroke-width: 1.5; position: relative; z-index: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
 .app-name { font: 800 24px/1 var(--font-display); }
+.m-brand { display: none; }
 .side-list { flex: 1; min-height: 0; overflow-y: auto; padding: 60px 12px 8px; scrollbar-width: none; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nv {
@@ -836,6 +837,9 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
   .loading { left: 50%; top: calc(var(--safe-t) + var(--title-h) + (100svh - var(--safe-t) - var(--title-h) - var(--sh) - 80px) / 2); }
   .toolbar { top: calc(var(--gap) + var(--safe-t)); right: var(--gap); }
   .toolbar .capsule:first-child { display: none; }
+  /* 左上にロゴと名前（右のツールバーのカプセル 50px と縦の中心をそろえる） */
+  .m-brand { display: flex; align-items: center; gap: 10px; position: fixed; z-index: 9500; pointer-events: none;
+    top: calc(var(--gap) + var(--safe-t)); left: 16px; height: 50px; }
   /* 大見出しはコンパクトに：説明と英名は省き、事実のピルは 1 行で横にスクロール */
   .titlebar { top: calc(var(--gap) + 58px + var(--safe-t)); left: 16px; right: 0; pointer-events: auto; }
   .eyebrow, .subtitle, .elements, .source { display: none; }
