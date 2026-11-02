@@ -1138,6 +1138,7 @@ function renderSide() {
 function saveSettings() { store.set('ml.settings', S.set); }
 function syncRangeFill(inp) {
   if (inp.type !== 'range') return;
+  LiquidGlass.setRange(inp);
   const p = ((+inp.value - +inp.min) / (+inp.max - +inp.min)) * 100;
   inp.style.setProperty('--p', p + '%');
 }
@@ -1282,6 +1283,7 @@ function bind() {
   $('#cReset').addEventListener('click', () => { viewer.zoomTo(undefined, 400); setTimeout(() => viewer.zoom(0.9, 200), 420); });
   $('#cSpin').addEventListener('click', (e) => {
     S.spin = !S.spin;
+    LiquidGlass.setMotion(S.spin);
     e.currentTarget.classList.toggle('on', S.spin);
     viewer.spin(S.spin ? 'y' : false, 0.6);
   });
@@ -1555,7 +1557,9 @@ function bindBuilder() {
 
   // 何もない所のクリック（ドラッグで回転したときは除く）
   let down = null;
-  $('#viewer').addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
+  $('#viewer').addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; LiquidGlass.setMotion(true); });
+  window.addEventListener('pointerup', () => { if (!S.spin) LiquidGlass.setMotion(false); });
+  $('#viewer').addEventListener('wheel', () => { LiquidGlass.setMotion(true); if (!S.spin) LiquidGlass.setMotion(false, 500); }, { passive: true });
   $('#viewer').addEventListener('pointerup', (e) => {
     if (!down || S.clickMode !== 'build') return;
     const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);

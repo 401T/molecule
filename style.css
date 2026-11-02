@@ -526,6 +526,157 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
 .toast.out { opacity: 0; transform: translateY(-10px) scale(.94); transition: .35s; }
 @keyframes tin { from { opacity: 0; transform: translateY(-18px) scale(.9); } }
 
+/* =====================================================================
+   Liquid Glass コントロール
+   ・標準：glass（ほぼ透明・縁の鏡面反射・触れた点から光る・押すと膨らむ）
+   ・主要操作：glassProminent（色付きのガラス）
+   ・選択の表示：滑らかに移動するガラスのレンズ（移動中は浮き上がって下の文字を拡大）
+   ・スイッチとスライダーのつまみ：操作中だけ透明なガラスに変わる
+   ===================================================================== */
+:root {
+  --lg-tint: rgba(255, 255, 255, .24);
+  --lg-hi: rgba(255, 255, 255, .95);
+  --lg-lo: rgba(255, 255, 255, .4);
+  --lg-edge: rgba(0, 0, 0, .07);
+  --lg-drop: 0 6px 16px rgba(20, 30, 60, .10), 0 1px 3px rgba(20, 30, 60, .08);
+  --lg-glow: rgba(255, 255, 255, .7);
+  --lg-knob-filter: blur(1px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --lg-tint: rgba(255, 255, 255, .08); --lg-hi: rgba(255, 255, 255, .42); --lg-lo: rgba(255, 255, 255, .1);
+    --lg-edge: rgba(255, 255, 255, .08); --lg-drop: 0 6px 16px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .35); --lg-glow: rgba(255, 255, 255, .32);
+  }
+}
+:root[data-theme="dark"] {
+  --lg-tint: rgba(255, 255, 255, .08); --lg-hi: rgba(255, 255, 255, .42); --lg-lo: rgba(255, 255, 255, .1);
+  --lg-edge: rgba(255, 255, 255, .08); --lg-drop: 0 6px 16px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .35); --lg-glow: rgba(255, 255, 255, .32);
+}
+
+/* 素材：glass */
+.btn, .btn.gray, .btn.tinted, .mini-btn, .chipbtn, .pel, .menu-btn, .chip, .field, .slider-row input[type=number], .inline-input:focus {
+  position: relative; isolation: isolate;
+  background: var(--lg-tint);
+  -webkit-backdrop-filter: blur(6px) saturate(180%); backdrop-filter: blur(6px) saturate(180%);
+  box-shadow: inset 0 1px .5px var(--lg-hi), inset 0 -1px 1px var(--lg-lo), inset 0 0 0 .5px var(--lg-edge), var(--lg-drop);
+}
+/* 縁の鏡面反射（左上が強く、右下にも回り込む） */
+.btn::before, .mini-btn::before, .chipbtn::before, .pel::before, .menu-btn::before, .chip::before, .lens::before, .range .knob::before, .fact::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: -1;
+  background: linear-gradient(155deg, var(--lg-hi), transparent 32%, transparent 62%, var(--lg-lo) 88%, var(--lg-hi));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.fact { position: relative; isolation: isolate; }
+/* 触れた点から広がる光 */
+.btn::after, .mini-btn::after, .chipbtn::after, .pel::after, .menu-btn::after, .ic::after, .tab::after, .seg > button::after,
+.modebar > button::after, .nv::after, .cand::after, .sl-item::after, .glass-menu button::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+  background: radial-gradient(circle at var(--px, 50%) var(--py, 50%), var(--lg-glow), transparent 62%);
+  opacity: 0; transition: opacity .6s;
+}
+.ic, .tab, .seg > button, .modebar > button, .nv, .cand, .sl-item, .glass-menu button { position: relative; isolation: isolate; }
+.pressing::after { opacity: 1; transition: opacity .06s; }
+/* 押すと膨らむ（ガラスの「しなり」） */
+:is(.btn, .mini-btn, .chipbtn, .pel, .menu-btn, .ic):active:not(:disabled) { transform: scale(1.07); }
+:is(.tab, .seg > button, .modebar > button):active { transform: scale(1.04); }
+.ic.pressing { background: var(--lens); box-shadow: inset 0 1px .5px var(--lg-hi), 0 4px 12px rgba(0,0,0,.12); }
+
+/* 素材：glassProminent（色付きのガラス） */
+.btn.filled, .pel.on, .mini-btn.on, .cand.on, .ic.on, .tg input:checked + .sw {
+  color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--blue) 64%, rgba(255,255,255,.55)), color-mix(in srgb, var(--blue) 86%, transparent));
+  box-shadow: inset 0 1px .5px rgba(255,255,255,.8), inset 0 -1px 1px rgba(0,0,0,.14), inset 0 0 14px rgba(255,255,255,.18),
+              0 8px 22px color-mix(in srgb, var(--blue) 34%, transparent);
+}
+.tg input:checked + .sw { background: linear-gradient(180deg, color-mix(in srgb, var(--green) 70%, rgba(255,255,255,.5)), color-mix(in srgb, var(--green) 90%, transparent)); box-shadow: inset 0 1px .5px rgba(255,255,255,.7), inset 0 -1px 1px rgba(0,0,0,.1), 0 4px 12px color-mix(in srgb, var(--green) 30%, transparent); }
+.btn.toggle.on { color: #fff; background: linear-gradient(180deg, color-mix(in srgb, var(--purple) 64%, rgba(255,255,255,.5)), color-mix(in srgb, var(--purple) 88%, transparent)); box-shadow: inset 0 1px .5px rgba(255,255,255,.75), inset 0 -1px 1px rgba(0,0,0,.14), 0 8px 22px color-mix(in srgb, var(--purple) 34%, transparent); }
+.btn.tinted { color: var(--blue); }
+.pel.on i { box-shadow: 0 0 0 1.5px #fff; }
+
+/* セグメント・タブ・タブバー・サイドバー：選択を示すガラスのレンズ */
+.has-lens:not(.glass) { position: relative; }
+.has-lens > :not(.lens) { position: relative; z-index: 1; }
+.has-lens > .on { background: transparent !important; box-shadow: none !important; }
+.lens {
+  position: absolute; left: 0; top: 0; z-index: 0; border-radius: 999px; pointer-events: none; isolation: isolate;
+  background: var(--lens);
+  box-shadow: inset 0 1px .5px var(--lg-hi), inset 0 -1px 1px var(--lg-lo), inset 0 0 0 .5px var(--lg-edge), 0 4px 14px rgba(0,0,0,.12);
+  transition: transform .6s var(--spring), width .5s var(--spring), height .5s var(--spring), scale .45s var(--spring), background .35s, box-shadow .35s, opacity .2s;
+}
+.lens.no-anim { transition: none; }
+/* 分子の回転中は大きなパネルの屈折を止めてぼかしだけにする */
+.lg-motion .sidebar, .lg-motion .inspector { -webkit-backdrop-filter: blur(var(--blur)) saturate(190%) !important; backdrop-filter: blur(var(--blur)) saturate(190%) !important; }
+/* 静止中は白いガラス、屈折させるのは動いている間だけ（描画負荷も抑える） */
+.lens:not(.moving), .range:not(.dragging) .knob { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.lens.moving {
+  z-index: 2; scale: 1.1 1.22;
+  background: rgba(255, 255, 255, .05);
+  box-shadow: inset 0 1.5px 1px var(--lg-hi), inset 0 -1.5px 2px var(--lg-lo), inset 0 0 0 1px rgba(255,255,255,.35), inset 0 0 16px rgba(255,255,255,.2), 0 12px 28px rgba(0,0,0,.18);
+}
+.nav > .lens { border-radius: 16px; }
+.seg.icons > .lens { border-radius: 22px; }
+.seg > button.on { color: var(--label); }
+.seg.icons > button.on, .tabs > .tab.on, .modebar > button.on { color: var(--blue); }
+
+/* スイッチ：押している間、つまみが大きな透明のガラスになる */
+.sw::after { transition: transform .4s var(--spring), width .3s var(--spring), height .3s var(--spring), top .3s var(--spring), background .25s, box-shadow .25s; }
+.tg:active .sw::after {
+  width: 48px; height: 32px; top: -2px; left: -2px;
+  background: rgba(255, 255, 255, .14);
+  -webkit-backdrop-filter: var(--lg-knob-filter) saturate(160%); backdrop-filter: var(--lg-knob-filter) saturate(160%);
+  box-shadow: inset 0 1.5px 1px rgba(255,255,255,.95), inset 0 -1px 2px rgba(255,255,255,.4), inset 0 0 0 1px rgba(255,255,255,.45), 0 8px 20px rgba(0,0,0,.2);
+}
+.tg:active input:checked + .sw::after { transform: translateX(18px); }
+
+/* スライダー：つまみはふだん白いカプセル、ドラッグ中は透明なガラスのレンズ */
+.range { grid-column: 1 / -1; position: relative; height: 32px; }
+.range input[type=range] { display: block; width: 100%; }
+.range input[type=range]::-webkit-slider-thumb { opacity: 0; }
+.range input[type=range]::-moz-range-thumb { opacity: 0; }
+.range .knob {
+  position: absolute; top: 50%; left: calc((100% - 38px) * var(--pf, .5)); width: 38px; height: 24px; margin-top: -12px;
+  border-radius: 999px; pointer-events: none; isolation: isolate; background: var(--knob);
+  box-shadow: 0 .5px 4px rgba(0,0,0,.12), 0 6px 13px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.9);
+  transition: scale .45s var(--spring), background .25s, box-shadow .25s;
+}
+.range.dragging .knob {
+  scale: 1.5 1.6; background: rgba(255, 255, 255, .08);
+  box-shadow: inset 0 1px .5px rgba(255,255,255,.95), inset 0 -1px 1.5px rgba(255,255,255,.4), inset 0 0 0 .7px rgba(255,255,255,.5), inset 0 0 10px rgba(255,255,255,.2), 0 8px 18px rgba(0,0,0,.18);
+}
+
+/* 入力欄 */
+.slider-row input[type=number] { background: var(--lg-tint); }
+.field:focus-within { box-shadow: inset 0 1px .5px var(--lg-hi), inset 0 0 0 .5px var(--lg-edge), 0 0 0 3px color-mix(in srgb, var(--blue) 35%, transparent), var(--lg-drop); }
+
+/* ボタンからガラスのメニューへ変形 */
+.menu-btn {
+  display: inline-flex; align-items: center; gap: 2px; height: 42px; border: 0; border-radius: 999px; padding: 0 10px 0 14px;
+  font-size: 14px; font-weight: 600; color: var(--blue); flex: none; transition: transform .35s var(--spring);
+}
+.menu-btn svg { width: 16px; height: 16px; stroke-width: 2.4; }
+.glass-menu {
+  position: fixed; z-index: 60; min-width: 190px; padding: 6px; border-radius: 24px; background: var(--glass-strong);
+  display: flex; flex-direction: column; gap: 1px; animation: menu-in .42s var(--spring);
+}
+.glass-menu.closing { animation: menu-out .24s ease-in forwards; }
+@keyframes menu-in { from { transform: scale(var(--from-sx, .3), var(--from-sy, .2)); opacity: .2; border-radius: 999px; } }
+@keyframes menu-out { to { transform: scale(var(--from-sx, .3), var(--from-sy, .2)); opacity: 0; } }
+.glass-menu button {
+  display: flex; align-items: center; gap: 10px; border: 0; background: transparent; text-align: left; border-radius: 18px;
+  padding: 10px 14px; font-size: 16px; color: var(--label);
+}
+.glass-menu button svg { width: 18px; height: 18px; stroke-width: 2.4; color: var(--blue); visibility: hidden; }
+.glass-menu button.on svg { visibility: visible; }
+.glass-menu button:hover { background: var(--fill4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lens, .range .knob, .sw::after, .glass-menu { transition: none !important; animation: none !important; }
+  .lens.moving { scale: 1; z-index: 0; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .lens.moving, .range.dragging .knob, .tg:active .sw::after { background: var(--knob); }
+}
+
 /* ===== レスポンシブ ===== */
 @media (max-width: 1180px) {
   :root { --side-w: 0px; --left: var(--gap); }
@@ -535,7 +686,9 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
     background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(190%); backdrop-filter: blur(var(--blur)) saturate(190%);
     box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 .5px var(--glass-edge), var(--glass-shadow);
   }
-  .field, .search select { background: transparent; }
+  .field { background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .menu-btn { background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .menu-btn::before { display: none; }
   .cands {
     left: auto; right: calc(var(--right) + 296px); width: 340px; top: calc(var(--gap) + 60px); bottom: auto; max-height: 60vh; border-radius: 28px;
     background: var(--glass-strong); -webkit-backdrop-filter: blur(30px) saturate(190%); backdrop-filter: blur(30px) saturate(190%);
@@ -568,8 +721,8 @@ input[type=range]::-moz-range-thumb { width: 38px; height: 24px; border-radius: 
     -webkit-backdrop-filter: none; backdrop-filter: none; transition: bottom .45s var(--spring);
   }
   body.sheet-min .search { bottom: calc(8px + var(--sheet-min) - 64px); }
-  .field { background: var(--fill3); height: 44px; }
-  .search select { display: none; }
+  .field { height: 44px; }
+  .menu-btn { display: none; }
   .cands { left: 8px; right: 8px; width: auto; top: auto; bottom: calc(8px + var(--sheet) + 8px); max-height: 40vh; }
   .tabs { margin: 0 12px; }
   .panes { padding: 2px 14px calc(28px + env(safe-area-inset-bottom)); }

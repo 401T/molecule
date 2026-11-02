@@ -81,9 +81,9 @@
   <h1 class="large-title" id="bdName"></h1>
   <div class="subtitle" id="bdEn"></div>
   <div class="facts">
-    <span class="fact formula" id="bdFormula"></span>
-    <span class="fact"><span id="bdMw"></span> g/mol</span>
-    <span class="fact chir" id="bdChir"></span>
+    <span class="fact formula" id="bdFormula" data-refract></span>
+    <span class="fact" data-refract><span id="bdMw"></span> g/mol</span>
+    <span class="fact chir" id="bdChir" data-refract></span>
   </div>
   <div class="elements" id="badges"></div>
   <div class="source" id="bdSrc"></div>
@@ -96,7 +96,7 @@
     <div class="app-name">Molecule</div>
   </div>
   <div class="side-list">
-    <nav class="nav" aria-label="サイドバー">
+    <nav class="nav" aria-label="サイドバー" data-lens>
       <button class="nv on" data-view="comp"><span class="tile t-blue"><svg><use href="#i-grid"/></svg></span>組成</button>
       <button class="nv" data-view="samples"><span class="tile t-orange"><svg><use href="#i-flask"/></svg></span>ライブラリ</button>
       <button class="nv" data-view="history"><span class="tile t-indigo"><svg><use href="#i-clock"/></svg></span>履歴</button>
@@ -124,7 +124,7 @@
     <svg class="sic"><use href="#i-search"/></svg>
     <input id="q" name="q" type="search" placeholder="検索" aria-label="分子式・名称・SMILES" enterkeyhint="search">
   </label>
-  <select id="mode" aria-label="入力の種類">
+  <select id="mode" aria-label="入力の種類" data-glass-menu>
     <option value="auto">自動</option>
     <option value="formula">分子式</option>
     <option value="name">名称</option>
@@ -151,7 +151,7 @@
 <!-- ===== インスペクタ ===== -->
 <section class="glass inspector" id="inspector" data-glass="inspector">
   <button class="grabber" id="grab" type="button" aria-label="パネルの開閉"></button>
-  <div class="tabs" role="tablist">
+  <div class="tabs" role="tablist" data-lens>
     <button class="tab on" data-tab="view" role="tab"><svg><use href="#i-cube"/></svg><span>表示</span></button>
     <button class="tab" data-tab="build" role="tab"><svg><use href="#i-hammer"/></svg><span>作成</span></button>
     <button class="tab" data-tab="stereo" role="tab"><svg><use href="#i-mirror"/></svg><span>立体</span></button>
@@ -164,7 +164,7 @@
     <!-- 表示 -->
     <div class="pane on" data-pane="view">
       <h3>モデル</h3>
-      <div class="seg" id="styleSeg">
+      <div class="seg" id="styleSeg" data-lens>
         <button type="button" data-style="ballstick">球棒</button>
         <button type="button" data-style="sphere">空間充填</button>
         <button type="button" data-style="stick">棒</button>
@@ -173,7 +173,7 @@
       <h3>サイズ</h3>
       <div class="group sliders" id="sliders"></div>
       <h3>原子のラベル</h3>
-      <div class="seg" id="labelSeg">
+      <div class="seg" id="labelSeg" data-lens>
         <button type="button" data-label="name">原子名</button>
         <button type="button" data-label="elem">元素</button>
         <button type="button" data-label="heavy">H以外</button>
@@ -195,7 +195,7 @@
         <button class="btn gray" type="button" id="bFromCur"><svg><use href="#i-hand"/></svg>表示中の分子を編集</button>
       </div>
       <h3>ツール</h3>
-      <div class="seg icons" id="toolSeg">
+      <div class="seg icons" id="toolSeg" data-lens>
         <button type="button" data-tool="add" class="on"><svg><use href="#i-plus"/></svg>追加</button>
         <button type="button" data-tool="bond"><svg><use href="#i-link"/></svg>結合</button>
         <button type="button" data-tool="elem"><svg><use href="#i-swap"/></svg>置換</button>
@@ -208,7 +208,7 @@
         <label class="row"><span>そのほかの元素</span><input class="inline-input" id="elemCustom" maxlength="2" placeholder="例: Xe" autocapitalize="off"></label>
       </div>
       <h3>結合次数</h3>
-      <div class="seg" id="orderSeg">
+      <div class="seg" id="orderSeg" data-lens>
         <button type="button" data-order="1" class="on">単結合</button>
         <button type="button" data-order="2">二重結合</button>
         <button type="button" data-order="3">三重結合</button>
@@ -286,7 +286,7 @@
 </section>
 
 <!-- ===== 下：クリック動作の切り替え（タブバー風） ===== -->
-<div class="glass modebar" data-glass="modebar" role="tablist" aria-label="クリック時の動作" id="clickSeg">
+<div class="glass modebar" data-glass="modebar" role="tablist" aria-label="クリック時の動作" id="clickSeg" data-lens>
   <button type="button" data-click="rotate" class="on"><svg><use href="#i-hand"/></svg><span>見る</span></button>
   <button type="button" data-click="measure"><svg><use href="#i-ruler"/></svg><span>計測</span></button>
   <button type="button" data-click="plane"><svg><use href="#i-plane"/></svg><span>平面</span></button>
