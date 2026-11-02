@@ -252,8 +252,47 @@ const PHONE = matchMedia('(max-width: 760px), (pointer: coarse)').matches;
 function initViewer() {
   viewer = $3Dmol.createViewer($('#viewer'), { backgroundColor: 'white', backgroundAlpha: 0, antialias: !PHONE });
   viewer.setBackgroundColor(0xffffff, 0);
-  new ResizeObserver(() => { viewer.resize(); LB.dirty = true; }).observe($('#viewer'));
+  watchGLContext();
 }
+let viewerRO = null;
+function observeViewerSize() {
+  if (viewerRO) return;
+  viewerRO = new ResizeObserver(() => { viewer.resize(); LB.dirty = true; });
+  viewerRO.observe($('#viewer'));
+}
+
+// iOS はメモリが足りないときやアプリを裏に回したときに WebGL の描画領域を取り上げることがあり、
+// そのままだと球と棒だけが消えてラベルだけが残る。取り上げられたら 3D 表示を作り直す
+let glLostTimer = 0;
+function watchGLContext() {
+  const cv = viewer.renderer?.context?.canvas;
+  if (!cv) return;
+  cv.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();                       // 復帰を許可する
+    clearTimeout(glLostTimer);
+    glLostTimer = setTimeout(rebuildViewer, 800);   // 復帰の通知が来なければ自分で作り直す
+  });
+  cv.addEventListener('webglcontextrestored', () => { clearTimeout(glLostTimer); rebuildViewer(); });
+}
+function glLost() {
+  try { return !!viewer.renderer?.context?.isContextLost?.(); } catch (e) { return false; }
+}
+function rebuildViewer() {
+  clearTimeout(glLostTimer);
+  let view = null;
+  try { view = viewer.getView(); } catch (e) { /* 失った状態では取れないこともある */ }
+  $('#viewer').innerHTML = '';
+  initViewer();
+  if (S.model || S.mol || S.sdf) {
+    renderModel({ resetView: !view });
+    if (view) { viewer.setView(view); viewer.render(); }
+    if (S.spin) viewer.spin('y', 0.6);
+  }
+  LB.dirty = true;
+}
+// 画面に戻ってきたときにも確かめる
+document.addEventListener('visibilitychange', () => { if (!document.hidden && glLost()) rebuildViewer(); });
+addEventListener('pageshow', () => { if (glLost()) rebuildViewer(); });
 
 const elemOf = (i) => S.atoms[i]?.elem;
 function dispRadius(e) {
@@ -1940,6 +1979,7 @@ function showInstallSheet() {
 applyTheme(store.get('ml.theme', 'auto'));
 LiquidGlass.init();
 initViewer();
+observeViewerSize();
 bind();
 bindBuilder();
 setupInstall();
