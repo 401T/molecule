@@ -261,6 +261,25 @@ const GL_PIXELS = PHONE ? 2.2e6 : 5e6;
 // その画面側のキャンバスにガラス（backdrop-filter）が重なると、合成のときに中身が落ちて
 // 球と棒だけが消えることがある。画面のキャンバスへ直接描く標準の方式を使わせる
 try { if ('OffscreenCanvas' in window) window.OffscreenCanvas = undefined; } catch (e) { /* 使えなければそのまま */ }
+// 3Dmol.js は「乗算済みでない透明度」（premultipliedAlpha: false）で WebGL を作る。画面のキャンバスへ直接描くと、
+// iPhone などの WebKit では透明な背景が白く塗られてしまう。どのブラウザでも同じに合成される乗算済みの方式に切り替え、
+// 背景色の指定と半透明の重ね方もそれに合わせて変換する
+(() => {
+  const orig = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type, opts) {
+    const is3Dmol = /webgl/.test(type) && opts && opts.premultipliedAlpha === false && opts.preserveDrawingBuffer;
+    const gl = orig.call(this, type, is3Dmol ? { ...opts, alpha: true, premultipliedAlpha: true } : opts);
+    if (is3Dmol && gl && !gl.__premul) {
+      gl.__premul = true;
+      const cc = gl.clearColor.bind(gl), bf = gl.blendFunc.bind(gl), bfs = gl.blendFuncSeparate.bind(gl);
+      gl.clearColor = (r, g, b, a) => cc(r * a, g * a, b * a, a);
+      // 色は従来どおり混ぜ、透明度は「上に重ねる」計算にする（乗算済みとして正しい結果になる）
+      gl.blendFunc = (sf, df) => (sf === gl.SRC_ALPHA && df === gl.ONE_MINUS_SRC_ALPHA
+        ? bfs(sf, df, gl.ONE, gl.ONE_MINUS_SRC_ALPHA) : bf(sf, df));
+    }
+    return gl;
+  };
+})();
 function initViewer() {
   viewer = $3Dmol.createViewer($('#viewer'), { backgroundColor: 'white', backgroundAlpha: 0, antialias: !PHONE });
   viewer.setBackgroundColor(0xffffff, 0);
@@ -415,10 +434,20 @@ function drawPlane(P, colorHex, grid, given) {
 // 全体が収まるように表示し、小さな分子は 1 Å ≒ 60 px までに抑える
 function fitView() {
   viewer.zoomTo();
-  // キャンバスは画面全体より大きいので、実際に見えている領域に収まるよう縮める
-  const can = $('#viewer').getBoundingClientRect(), vis = $('#visArea').getBoundingClientRect();
-  const fit = Math.min(1, vis.width / (can.width || 1), vis.height / (can.height || 1));
-  viewer.zoom(0.9 * (fit || 1));
+  // キャンバスは画面全体より大きいので、実際に画面に映る分子の大きさを測り、見えている領域に収まるよう合わせる
+  // （キャンバスと見える領域の比で縮めると、縦長の画面では二重に縮んで小さくなりすぎる）
+  const vis = $('#visArea').getBoundingClientRect();
+  const atoms = viewer.getModel()?.selectedAtoms({}) || [];
+  if (atoms.length && vis.width > 0 && vis.height > 0) {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const at of atoms) {
+      const p = viewer.modelToScreen({ x: at.x, y: at.y, z: at.z });
+      x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+    }
+    const pad = 48;   // 端の原子の球とラベルの分
+    const f = 0.92 * Math.min((vis.width - pad) / Math.max(1, x1 - x0), (vis.height - pad) / Math.max(1, y1 - y0));
+    if (isFinite(f) && f > 0) viewer.zoom(Math.min(f, 4));
+  }
   const ax = viewAxes();
   const a = viewer.modelToScreen(v(ax.center)), b = viewer.modelToScreen(v(Chem.add(ax.center, ax.right)));
   const ppa = Math.hypot(b.x - a.x, b.y - a.y);
