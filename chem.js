@@ -197,8 +197,8 @@ const Chem = (() => {
     if (cp.N === 6) {
       const t = cp.theta;
       const pm = cp.phi % 60, dphi = Math.min(pm, 60 - pm);     // 0: 舟形系列, 30: ねじれ舟形系列
-      if (t < 22.5) return '椅子形';
-      if (t > 157.5) return '椅子形（反転）';
+      // θ≈0° と θ≈180° はどちらも椅子形（どちらになるかは原子の番号の向きで決まるだけ）
+      if (t < 22.5 || t > 157.5) return '椅子形';
       if (t >= 67.5 && t <= 112.5) return dphi < 10 ? '舟形' : dphi > 20 ? 'ねじれ舟形' : '舟形〜ねじれ舟形';
       return dphi > 20 ? '半いす形' : dphi < 10 ? '封筒形（ソファ形）' : '半いす形〜封筒形';
     }
