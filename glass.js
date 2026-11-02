@@ -163,9 +163,37 @@ const LiquidGlass = (() => {
     knob.className = 'knob';
     wrap.appendChild(knob);
     input.addEventListener('input', () => setRange(input));
-    const end = () => wrap.classList.remove('dragging');
-    input.addEventListener('pointerdown', () => { wrap.classList.add('dragging'); knob.dataset.refract = 'dome'; track(knob); });
-    input.addEventListener('pointerup', end); input.addEventListener('pointercancel', end); input.addEventListener('blur', end);
+    // iOS は細いつまみに正確に触れないと動き出さないので、溝全体で指の位置を受け取って値を決める
+    const valueAt = (x) => {
+      const r = wrap.getBoundingClientRect(), kw = knob.offsetWidth || 40;
+      const f = Math.max(0, Math.min(1, (x - r.left - kw / 2) / Math.max(1, r.width - kw)));
+      const min = +input.min, max = +input.max, step = +input.step || 1;
+      return Math.min(max, Math.max(min, Math.round((min + f * (max - min)) / step) * step));
+    };
+    const setFrom = (x) => {
+      const v = valueAt(x);
+      if (+input.value === v) return;
+      input.value = v;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    let active = null;
+    wrap.addEventListener('pointerdown', (e) => {
+      if (e.button > 0) return;
+      e.preventDefault();
+      active = e.pointerId;
+      wrap.setPointerCapture(e.pointerId);
+      wrap.classList.add('dragging'); knob.dataset.refract = 'dome'; track(knob);
+      setFrom(e.clientX);
+    });
+    wrap.addEventListener('pointermove', (e) => { if (e.pointerId === active) setFrom(e.clientX); });
+    const end = (e) => {
+      if (e.pointerId !== active) return;
+      active = null;
+      wrap.classList.remove('dragging');
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    wrap.addEventListener('pointerup', end);
+    wrap.addEventListener('pointercancel', end);
     return wrap;
   }
   function setRange(input) {

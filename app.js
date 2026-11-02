@@ -1921,21 +1921,6 @@ function showInstallSheet() {
   el.querySelector('button').addEventListener('click', close);
 }
 
-// iOS のホーム画面から開いたとき（ステータスバーの下までページを広げる設定）は、
-// 表示範囲が画面の下端より短くなり、下に空白が残る。その差を測って下端の部品をずらす
-function fixStandaloneGap() {
-  let gap = 0;
-  if (isStandalone() && isIOS()) {
-    const screenH = innerWidth > innerHeight ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
-    gap = Math.round(screenH - innerHeight);
-    if (gap < 0 || gap > 80) gap = 0;
-  }
-  document.documentElement.style.setProperty('--pwa-gap', gap + 'px');
-}
-fixStandaloneGap();
-addEventListener('resize', fixStandaloneGap);
-addEventListener('orientationchange', () => setTimeout(fixStandaloneGap, 300));
-
 /* ===== 起動 ===== */
 applyTheme(store.get('ml.theme', 'auto'));
 LiquidGlass.init();
