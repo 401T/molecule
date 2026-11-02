@@ -9,7 +9,8 @@
   "main": "desktop/main.js",
   "scripts": {
     "start": "electron .",
-    "build:mac": "electron-packager . Molecule --platform=darwin --arch=arm64 --icon=desktop/icon.icns --app-bundle-id=io.github.401t.molecule --app-category-type=public.app-category.education --out=dist --overwrite --ignore=^/dist --ignore=^/\\.git --ignore=^/README.md --ignore=^/icon.svg --ignore=^/apple-touch-icon.png --ignore=^/icon-.*\\.png --ignore=^/sw.js --ignore=^/manifest.webmanifest"
+    "build:mac": "electron-packager . Molecule --platform=darwin --arch=arm64 --icon=desktop/icon.icns --app-bundle-id=io.github.401t.molecule --app-category-type=public.app-category.education --out=dist --overwrite --ignore=^/dist --ignore=^/\\.git --ignore=^/README.md --ignore=^/icon.svg --ignore=^/apple-touch-icon.png --ignore=^/icon-.*\\.png --ignore=^/sw.js --ignore=^/scripts --ignore=^/manifest.webmanifest",
+    "stamp": "node scripts/stamp.mjs"
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",

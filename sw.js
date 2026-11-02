@@ -1,8 +1,10 @@
 'use strict';
-/* サービスワーカー：ホーム画面から開いたときに素早く起動し、オフラインでも画面と一度見た分子を出せるようにする。
-   ・アプリ本体と CDN のライブラリ：キャッシュを先に返し、裏で更新（stale-while-revalidate）
-   ・PubChem / Wikidata の結果：ネットワーク優先、つながらないときはキャッシュ */
-const VERSION = 'molecule-v1';
+/* サービスワーカー：ホーム画面から開いたときに、電波がなくても画面と一度見た分子を出せるようにする。
+   ・アプリ本体（HTML・CSS・JS）：ネットワーク優先。公開した新しい版をすぐ使い、つながらないときだけ保存分を使う
+     （保存分を先に返すと、新しい HTML と古い CSS が食い違って表示が崩れるため）
+   ・CDN のライブラリ：版つきの URL なので保存分を優先
+   ・PubChem / Wikidata の結果：ネットワーク優先、つながらないときは保存分 */
+const VERSION = 'molecule-202611020906-9046911';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'chem.js', 'builder.js', 'glass.js',
   'icon.svg', 'icon-192.png', 'apple-touch-icon.png', 'manifest.webmanifest',
@@ -11,7 +13,7 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -20,22 +22,23 @@ self.addEventListener('activate', (e) => {
     .then(() => self.clients.claim()));
 });
 
+const networkFirst = (req, ignoreSearch) => fetch(req, { cache: 'no-cache' }).then((res) => {
+  if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
+  return res;
+}).catch(() => caches.match(req, { ignoreSearch }).then((hit) => hit || Response.error()));
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  const data = /pubchem\.ncbi\.nlm\.nih\.gov|wikidata\.org/.test(url.hostname);
-  const shell = url.origin === location.origin || url.hostname === 'cdn.jsdelivr.net';
-  if (data) {
-    e.respondWith(fetch(req).then((res) => {
+  if (url.origin === location.origin) {
+    e.respondWith(networkFirst(req, true));
+  } else if (url.hostname === 'cdn.jsdelivr.net') {
+    e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => {
       if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
       return res;
-    }).catch(() => caches.match(req).then((hit) => hit || Response.error())));
-  } else if (shell) {
-    e.respondWith(caches.open(VERSION).then(async (c) => {
-      const hit = await c.match(req, { ignoreSearch: url.origin === location.origin });
-      const net = fetch(req).then((res) => { if (res.ok) c.put(req, res.clone()); return res; }).catch(() => hit);
-      return hit || net;
-    }));
+    })));
+  } else if (/pubchem\.ncbi\.nlm\.nih\.gov|wikidata\.org/.test(url.hostname)) {
+    e.respondWith(networkFirst(req, false));
   }
 });
