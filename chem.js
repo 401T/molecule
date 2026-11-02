@@ -158,6 +158,19 @@ const Chem = (() => {
     return { ok: bad === 0, worst, bad };
   }
 
+  // 任意の点が対称心かどうか
+  function testInversion(atoms, c, tol = 0.2) {
+    let worst = 0, bad = 0;
+    for (const a of atoms) {
+      const q = sub(mul(c, 2), a.p);
+      let best = Infinity;
+      for (const b of atoms) if (b.e === a.e) best = Math.min(best, dist(q, b.p));
+      if (best > tol) bad++;
+      worst = Math.max(worst, best);
+    }
+    return { ok: bad === 0, worst, bad };
+  }
+
   /* ---------- Cremer–Pople 環のパッカリング解析 ---------- */
   function ringFrame(P) {
     const N = P.length, c = centroid(P);
@@ -284,6 +297,6 @@ const Chem = (() => {
   return {
     sub, add, mul, dot, cross, norm, unit, dist, centroid, DEG,
     COLORS, VDW, ELEM_JA, color, vdw, isLight,
-    fitPlane, findSymmetry, testMirror, cremerPople, ringTargets, ringRepucker, moveRing, angle, dihedral
+    fitPlane, findSymmetry, testMirror, testInversion, cremerPople, ringTargets, ringRepucker, moveRing, angle, dihedral
   };
 })();

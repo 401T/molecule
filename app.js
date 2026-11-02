@@ -293,7 +293,18 @@ function drawShapes() {
   }
   S.planeSel.forEach((i) => viewer.addSphere({ center: v(X[i]), radius: dispRadius(elemOf(i)) + 0.22, color: '#7b4fd0', opacity: 0.4 }));
   if (S.clickMode === 'build' && BS.pick >= 0 && X[BS.pick]) viewer.addSphere({ center: v(X[BS.pick]), radius: dispRadius(elemOf(BS.pick)) + 0.25, color: '#34c759', opacity: 0.45 });
-  S.planes.forEach((pl) => { if (pl.visible) drawPlane(pl.atoms.map((i) => X[i]), pl.color, st.planeGrid); });
+  S.planes.forEach((el) => {
+    if (!el.visible) return;
+    const g = elementGeom(el);
+    if (g.n) drawPlane(null, el.color, st.planeGrid, g);
+    else {
+      // 対称心：小さな球と 3 方向の短い軸
+      viewer.addSphere({ center: v(g.c), radius: 0.16, color: el.color });
+      for (const ax of [[1, 0, 0], [0, 1, 0], [0, 0, 1]]) {
+        viewer.addCylinder({ start: v(Chem.add(g.c, Chem.mul(ax, -0.45))), end: v(Chem.add(g.c, Chem.mul(ax, 0.45))), radius: 0.025, color: el.color });
+      }
+    }
+  });
   if (S.sym && S.symShow) S.sym.planes.forEach((pl) => drawPlane(null, '#03af7a', st.planeGrid, pl));
 }
 const v = (p) => ({ x: p[0], y: p[1], z: p[2] });
@@ -582,30 +593,60 @@ function runSymmetry(announce = true) {
 }
 
 /* ===== 平面の作図 ===== */
+const EL_DEF = {
+  plane3: { kind: 'plane', label: '3原子を通る平面', need: (n) => n >= 3 },
+  bisect: { kind: 'plane', label: '2原子の垂直二等分面', need: (n) => n === 2 },
+  pmid: { kind: 'point', label: '2原子の中点', need: (n) => n === 2 },
+  pcen: { kind: 'point', label: '分子の重心', need: () => true }
+};
+// 対称要素の位置（平面は点 c と法線 n、対称心は点 c）。原子の位置から毎回求めるので配座を変えても追従する
+function elementGeom(el) {
+  const P = el.atoms.map((i) => S.X[i]);
+  if (el.def === 'plane3') { const f = Chem.fitPlane(P); return { c: f.c, n: f.n, rms: f.rms }; }
+  if (el.def === 'bisect') return { c: Chem.mul(Chem.add(P[0], P[1]), 0.5), n: Chem.unit(Chem.sub(P[1], P[0])) };
+  if (el.def === 'pmid') return { c: Chem.mul(Chem.add(P[0], P[1]), 0.5) };
+  return { c: Chem.centroid(symAtoms().map((a) => a.p)) };
+}
+
 function renderPlanes() {
+  const n = S.planeSel.length;
   $('#planeSel').innerHTML = S.planeSel.map((i, k) => `<span class="chip"><i>${k + 1}</i>${S.names[i]}</span>`).join('') + planePreviewText();
-  $('#planeMake').disabled = S.planeSel.length < 3;
+  $$('[data-mk]').forEach((b) => { b.disabled = !S.model || !EL_DEF[b.dataset.mk].need(n); });
+  $('#planeSelClear').disabled = !n;
   const atoms = symAtoms();
-  $('#planeList').innerHTML = S.planes.map((pl, k) => {
-    const P = pl.atoms.map((i) => S.X[i]);
-    const f = Chem.fitPlane(P);
-    const mir = Chem.testMirror(atoms, f.c, f.n, SYM_TOL);
-    const dist = S.X.map((p, i) => [i, Math.abs(Chem.dot(Chem.sub(p, f.c), f.n))]);
-    const def = new Set(pl.atoms);
-    const on = dist.filter(([, d]) => d <= PLANE_EXACT).map(([i]) => S.names[i]);
-    const extra = dist.filter(([i, d]) => d <= PLANE_EXACT && !def.has(i)).map(([i]) => S.names[i]);
-    const near = dist.filter(([, d]) => d > PLANE_EXACT && d <= PLANE_NEAR).map(([i, d]) => `${S.names[i]}（${d.toFixed(3)}）`);
-    return `<div class="item"><div class="hd"><span class="sw-c" style="background:${pl.color}"></span><b>平面 ${k + 1}</b>
-      <span class="r"><button class="mini-btn${pl.visible ? ' on' : ''}" data-pv="${k}">${pl.visible ? '表示中' : '非表示'}</button><button class="mini-btn" data-pd="${k}">削除</button></span></div>
-      <div class="sub">定義：${pl.atoms.map((i) => S.names[i]).join('・')}　RMS ${f.rms.toFixed(3)} Å</div>
-      <div class="sub">${mir.ok ? `<span class="ok">✓ 鏡映面</span>（最大ずれ ${mir.worst.toFixed(3)} Å）` : `<span class="ng">× 鏡映面ではない</span>（重ならない原子 ${mir.bad} 個）`}</div>
-      <div class="sub"><b class="onplane" style="--c:${pl.color}">同一平面上 ${on.length} 個</b>（|d| ≤ ${PLANE_EXACT} Å）：${on.length ? on.join('、') : 'なし'}</div>
-      <div class="sub">選んだ原子以外で同じ平面に乗る原子：<b class="onplane" style="--c:${pl.color}">${extra.length ? extra.join('、') : 'なし'}</b></div>
-      ${near.length ? `<div class="sub">わずかに外れる原子（≤ ${PLANE_NEAR} Å）：${near.join('、')}</div>` : ''}</div>`;
+  const count = { plane: 0, point: 0 };
+  $('#planeList').innerHTML = S.planes.map((el, k) => {
+    const d = EL_DEF[el.def], g = elementGeom(el);
+    const no = ++count[d.kind];
+    const def = el.atoms.length ? `${d.label}：${el.atoms.map((i) => S.names[i]).join('・')}` : d.label;
+    let body;
+    if (d.kind === 'plane') {
+      const mir = Chem.testMirror(atoms, g.c, g.n, SYM_TOL);
+      const dist = S.X.map((p, i) => [i, Math.abs(Chem.dot(Chem.sub(p, g.c), g.n))]);
+      const on = dist.filter(([, x]) => x <= PLANE_EXACT).map(([i]) => S.names[i]);
+      const own = new Set(el.atoms);
+      const extra = dist.filter(([i, x]) => x <= PLANE_EXACT && !own.has(i)).map(([i]) => S.names[i]);
+      body = `<div class="sub">${mir.ok ? `<span class="ok">鏡映面です</span>（最大のずれ ${mir.worst.toFixed(3)} Å）` : `<span class="ng">鏡映面ではありません</span>（重ならない原子 ${mir.bad} 個）`}</div>
+        <div class="sub">面上の原子 ${on.length} 個${on.length ? `：${on.join('、')}` : ''}</div>
+        ${extra.length && el.atoms.length ? `<div class="sub">選んだ原子以外：<b class="onplane" style="--c:${el.color}">${extra.join('、')}</b></div>` : ''}`;
+    } else {
+      const inv = Chem.testInversion(atoms, g.c, SYM_TOL);
+      body = `<div class="sub">${inv.ok ? `<span class="ok">対称心です</span>（最大のずれ ${inv.worst.toFixed(3)} Å）` : `<span class="ng">対称心ではありません</span>（重ならない原子 ${inv.bad} 個）`}</div>`;
+    }
+    return `<div class="item"><div class="hd"><span class="sw-c" style="background:${el.color}"></span><b>${d.kind === 'plane' ? '平面' : '対称心'} ${no}</b>
+      <span class="r"><button class="mini-btn${el.visible ? ' on' : ''}" data-pv="${k}">${el.visible ? '表示' : '非表示'}</button><button class="mini-btn danger" data-pd="${k}">削除</button></span></div>
+      <div class="sub">${esc(def)}</div>${body}</div>`;
   }).join('');
   $$('#planeList [data-pv]').forEach((b) => b.addEventListener('click', () => { const p = S.planes[+b.dataset.pv]; p.visible = !p.visible; renderPlanes(); drawShapes(); viewer.render(); }));
   $$('#planeList [data-pd]').forEach((b) => b.addEventListener('click', () => { S.planes.splice(+b.dataset.pd, 1); renderPlanes(); drawShapes(); viewer.render(); }));
   computeOnPlane();
+}
+
+function addElement(def) {
+  if (!S.model || !EL_DEF[def].need(S.planeSel.length)) return;
+  S.planes.push({ def, atoms: def === 'pcen' ? [] : S.planeSel.slice(), color: PLANE_COLORS[S.planes.length % PLANE_COLORS.length], visible: true });
+  S.planeSel = [];
+  renderPlanes(); drawShapes(); viewer.render(); LB.dirty = true;
 }
 
 // 選択中の原子（3 つ以上）が決める平面
@@ -629,7 +670,7 @@ function computeOnPlane() {
     if (!S.onPlane.has(i)) S.onPlane.set(i, []);
     S.onPlane.get(i).push({ color, dashed });
   });
-  S.planes.forEach((pl) => { if (pl.visible) { const f = Chem.fitPlane(pl.atoms.map((i) => S.X[i])); mark(f.c, f.n, pl.color, false); } });
+  S.planes.forEach((el) => { if (!el.visible) return; const g = elementGeom(el); if (g.n) mark(g.c, g.n, el.color, false); });
   const pv = previewPlane();
   if (pv) mark(pv.c, pv.n, '#af52de', true);
   if (S.sym && S.symShow) S.sym.planes.forEach((pl) => mark(pl.c, pl.n, '#03af7a', false));
@@ -691,25 +732,22 @@ function renderDihedralCtl() {
   const box = $('#dihCtl');
   const moving = rotatableSide();
   if (!moving) {
-    box.innerHTML = S.sel.length === 4 ? '<p class="footnote" style="padding:0 10px">中央の結合が環内・多重結合のため回転できません。</p>' : '';
+    box.innerHTML = S.sel.length === 4 ? '<p class="footnote">中央の結合が環の中にあるか多重結合なので、回せません。</p>' : '';
     return;
   }
   const cur = Chem.dihedral(...S.sel.map((i) => S.X[i]));
-  box.innerHTML = `<div class="slider-row"><label>結合 ${S.names[S.sel[1]]}–${S.names[S.sel[2]]} の回転<small>0°=重なり形・180°=アンチ形</small></label>
-    <span class="num"><input type="number" id="n-dih" min="-180" max="180" step="1" value="${cur.toFixed(0)}"><span class="unit">°</span></span>
-    <input type="range" id="s-dih" min="-180" max="180" step="1" value="${cur.toFixed(0)}"></div>
-    <div class="btnrow" style="margin-top:6px"><button class="mini-btn" data-dv="0">0°</button><button class="mini-btn" data-dv="60">60°</button><button class="mini-btn" data-dv="120">120°</button><button class="mini-btn" data-dv="180">180°</button><button class="mini-btn" data-dv="-60">−60°</button><button class="mini-btn" data-dv="-120">−120°</button></div>`;
-  const r = $('#s-dih'), n = $('#n-dih');
+  box.innerHTML = `<div class="size-card">${angleSlider(`結合 ${S.names[S.sel[1]]}–${S.names[S.sel[2]]} の回転`, '0° 重なり形 ・ 180° アンチ形', 'id="s-dih"', -180, 180, cur)}
+    <div class="presets">${[-120, -60, 0, 60, 120, 180].map((x) => `<button class="mini-btn" data-dv="${x}">${x < 0 ? '−' + -x : x}°</button>`).join('')}</div></div>`;
+  const r = $('#s-dih');
   syncRangeFill(r);
-  const go = (val, from) => {
-    val = Math.max(-180, Math.min(180, +val));
-    if (from !== r) r.value = val;
-    if (from !== n) n.value = val;
+  const go = (val) => {
+    val = Math.max(-180, Math.min(180, Math.round(+val)));
+    r.value = val;
+    r.closest('.angle').querySelector('output').textContent = `${val}°`;
     syncRangeFill(r);
     setDihedral(moving, val);
   };
-  r.addEventListener('input', () => go(r.value, r));
-  n.addEventListener('change', () => go(n.value, n));
+  r.addEventListener('input', () => go(r.value));
   box.querySelectorAll('[data-dv]').forEach((b) => b.addEventListener('click', () => go(b.dataset.dv)));
 }
 function setDihedral(moving, target) {
@@ -793,10 +831,8 @@ function renderRings() {
         <button class="mini-btn" data-rop="boat" data-r="${k}">舟形</button>
         <button class="mini-btn" data-rop="env" data-r="${k}">封筒形</button>
       </div>
-      <div class="slider-row"><label>θ<small>0°=椅子・90°=舟・180°=反転椅子</small></label><span class="num"><input type="number" data-rt="${k}" min="0" max="180" step="1" value="${cp.theta.toFixed(0)}"><span class="unit">°</span></span>
-        <input type="range" data-rt="${k}" min="0" max="180" step="1" value="${cp.theta.toFixed(0)}"></div>
-      <div class="slider-row"><label>φ<small>擬回転：0°=舟・30°=ねじれ舟</small></label><span class="num"><input type="number" data-rp="${k}" min="0" max="360" step="1" value="${cp.phi.toFixed(0)}"><span class="unit">°</span></span>
-        <input type="range" data-rp="${k}" min="0" max="360" step="1" value="${cp.phi.toFixed(0)}"></div>`
+      ${angleSlider('θ', '0° 椅子形 ・ 90° 舟形 ・ 180° 反転した椅子形', `data-rt="${k}"`, 0, 180, cp.theta)}
+      ${angleSlider('φ', '擬回転　0° 舟形 ・ 30° ねじれ舟形', `data-rp="${k}"`, 0, 360, cp.phi)}`
       : r.size === 6 && !r.aromatic ? '<div class="sub">縮環・橋かけ・二重結合を含む環は、配座の手動変更に対応していません（配座探索は可能）。</div>' : '';
     return `<div class="item"><div class="hd"><b>${r.size}員環${r.aromatic ? '（芳香環）' : ''}</b><span class="r"><span class="tag ${cp && cp.name.startsWith('椅子') ? 'achiral' : 'chiral'}" style="margin:0">${cp ? cp.name : '—'}</span></span></div>
       <div class="sub">${r.atoms.map((i) => S.names[i]).join('–')}</div><div class="sub">${par}</div>${ctl}</div>`;
@@ -805,15 +841,11 @@ function renderRings() {
   box.querySelectorAll('input[data-rt], input[data-rp]').forEach((inp) => {
     syncRangeFill(inp);
     const k = +(inp.dataset.rt ?? inp.dataset.rp);
-    const read = () => {
-      const t = +box.querySelector(`input[type=range][data-rt="${k}"]`).value;
-      const p = +box.querySelector(`input[type=range][data-rp="${k}"]`).value;
-      return [t, p];
-    };
+    const read = () => [+box.querySelector(`input[data-rt="${k}"]`).value, +box.querySelector(`input[data-rp="${k}"]`).value];
     inp.addEventListener('input', () => {
-      const sib = box.querySelectorAll(`input[data-${inp.dataset.rt != null ? 'rt' : 'rp'}="${k}"]`);
-      sib.forEach((x) => { if (x !== inp) x.value = inp.value; syncRangeFill(x); });
-      if (inp.type === 'range') ringPreview(k, ...read());
+      inp.closest('.angle').querySelector('output').textContent = `${inp.value}°`;
+      syncRangeFill(inp);
+      ringPreview(k, ...read());
     });
     inp.addEventListener('change', () => ringRelax(k, ...read()));
   });
@@ -907,7 +939,9 @@ function renderEnergy() {
   const box = $('#energy');
   if (!S.mol || S.E == null) { box.innerHTML = '<b>—</b><span>MMFF94s のパラメータがない原子を含むため計算できません</span>'; return; }
   if (S.Emin == null || S.E < S.Emin) S.Emin = S.E;
-  box.innerHTML = `<b>${S.E.toFixed(2)}</b><span>kcal/mol　ΔE = ${(S.E - S.Emin).toFixed(2)}（これまでの最小値比）<br>${esc(S.Elabel)}</span>`;
+  box.innerHTML = `<div class="en-main"><b>${S.E.toFixed(2)}</b><span>kcal/mol</span></div>
+    <div class="en-sub">これまでで最も安定な配座との差　${(S.E - S.Emin).toFixed(2)} kcal/mol</div>
+    <div class="en-sub">${esc(S.Elabel)}</div>`;
 }
 
 async function conformerSearch() {
@@ -926,7 +960,7 @@ async function conformerSearch() {
       const E = minimise(m);
       setXYZ(m, superpose(getXYZ(m), ref, heavy.length >= 3 ? heavy : [...ref.keys()]));
       out.push({ mol: m, E });
-      btn.textContent = `探索中 ${k + 1}`;
+      btn.querySelector('span').textContent = `探索中… ${k + 1}`;
       await sleep(0);
     }
     // エネルギーが 0.01 kcal/mol 以内のものは同一配座とみなす
@@ -940,7 +974,7 @@ async function conformerSearch() {
     renderConfs();
     toast('配座探索が完了しました', `${S.confs.length} 個の配座（MMFF94s 最適化）`, 'ok');
   });
-  btn.textContent = '配座を探索';
+  btn.querySelector('span').textContent = '配座を探索';
 }
 function renderConfs() {
   const box = $('#confList');
@@ -1139,6 +1173,7 @@ function renderInfo() {
   const k = $('#bdName');
   k.textContent = name;
   k.className = 'large-title' + (name.length > 26 ? ' xlong' : name.length > 14 ? ' long' : '');
+  k.title = name;
   $('#bdEn').textContent = ja && title !== ja ? title : (p.IUPACName && p.IUPACName.toLowerCase() !== title.toLowerCase() ? p.IUPACName : '');
   $('#bdFormula').innerHTML = subFormula(p.MolecularFormula);
   $('#bdMw').textContent = (+p.MolecularWeight).toFixed(2);
@@ -1186,6 +1221,10 @@ function renderSide() {
     const h = store.get('ml.history', []);
     box.innerHTML = '<h4>履歴</h4>' + (h.length ? h.map((x) => `<button class="sl-item" data-cid="${x.cid}">${esc(x.name)}<small>${esc(x.f || '')}</small></button>`).join('')
       : '<div class="sl-empty">まだ履歴はありません</div>');
+  } else if (curView === 'saved') {
+    const list = savedList();
+    box.innerHTML = '<h4>保存した分子</h4>' + (list.length ? list.map((e) => `<button class="sl-item" data-saved="${e.id}">${esc(e.name)}<small>${subFormula(e.formula)}</small></button>`).join('')
+      : '<div class="sl-empty">まだありません。「作成」タブで保存できます。</div>');
   } else if (curView === 'about') {
     box.innerHTML = `<h4>このアプリについて</h4><div class="sl-about">
       <p><b>座標</b><br>PubChem の 3D 配座（OMEGA 生成・MMFF94s 最適化）の全原子座標をそのまま描画します。3D 配座が無い化合物は OpenChemLib で生成し MMFF94s で最適化します。</p>
@@ -1199,6 +1238,7 @@ function renderSide() {
     box.innerHTML = '<h4>組成（表示中の原子）</h4>' + hillOrder(c).map((e) =>
       `<div class="comp"><span class="ball" style="background:${Chem.color(e)}"></span><span class="el">${e}</span>${esc(Chem.ELEM_JA[e] || '')}<span class="ct">${c[e]}</span></div>`).join('');
   }
+  box.querySelectorAll('[data-saved]').forEach((b) => b.addEventListener('click', () => loadSaved(+b.dataset.saved)));
   box.querySelectorAll('[data-cid]').forEach((b) => b.addEventListener('click', () => {
     $('#cands').hidden = true;
     loadCid(+b.dataset.cid, b.dataset.ja ? { ja: b.dataset.ja } : {});
@@ -1354,23 +1394,16 @@ function bind() {
     S.clickMode = mode;
     if (mode !== 'build') BS.pick = -1;
     $$('#clickSeg button').forEach((b) => b.classList.toggle('on', b.dataset.click === mode));
-    $('#planeMode').classList.toggle('on', mode === 'plane');
     if (S.model) { drawShapes(); viewer.render(); }
     LB.dirty = true;
   };
   $('#clickSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setClick(b.dataset.click); });
-  $('#planeMode').addEventListener('click', () => setClick(S.clickMode === 'plane' ? 'rotate' : 'plane'));
-  $('#planeMake').addEventListener('click', () => {
-    if (S.planeSel.length < 3) return;
-    S.planes.push({ atoms: S.planeSel.slice(), color: PLANE_COLORS[S.planes.length % PLANE_COLORS.length], visible: true });
-    S.planeSel = [];
-    renderPlanes(); drawShapes(); viewer.render(); LB.dirty = true;
-  });
+  $$('[data-mk]').forEach((b) => b.addEventListener('click', () => addElement(b.dataset.mk)));
   $('#planeSelClear').addEventListener('click', () => { S.planeSel = []; renderPlanes(); drawShapes(); viewer.render(); LB.dirty = true; });
   $('#symFind').addEventListener('click', () => {
     if (!S.model) return;
-    if (S.sym && S.symShow) { S.symShow = false; S.sym = null; $('#symVerdict').innerHTML = ''; $('#symFind').textContent = '対称面を自動検出'; computeOnPlane(); drawShapes(); viewer.render(); return; }
-    S.symShow = true; runSymmetry(true); $('#symFind').textContent = '検出結果を消す';
+    if (S.sym && S.symShow) { S.symShow = false; S.sym = null; $('#symVerdict').innerHTML = ''; $('#symFind span').textContent = '対称面と対称心を探す'; computeOnPlane(); drawShapes(); viewer.render(); return; }
+    S.symShow = true; runSymmetry(true); $('#symFind span').textContent = '検出結果を消す';
   });
 
   $('#mClear').addEventListener('click', () => { S.sel = []; renderMeasure(); drawShapes(); viewer.render(); LB.dirty = true; });
@@ -1432,7 +1465,7 @@ const TOOL_HINT = {
   elem: '原子をクリック：選んだ元素に置き換えます。',
   erase: '原子をクリック：その原子（と付いている水素）を削除します。'
 };
-const BS = { mol: Builder.empty(), undo: [], redo: [], tool: 'add', elem: 'C', order: 1, pick: -1, baseName: '' };
+const BS = { mol: Builder.empty(), undo: [], redo: [], tool: 'add', elem: 'C', order: 1, pick: -1, baseName: '', name: '' };
 const autoH = () => $('#bAutoH').checked;
 const autoRelax = () => $('#bAutoRelax').checked;
 
@@ -1447,6 +1480,7 @@ function builderFromCurrent() {
   S.atoms.forEach((a, i) => m.atoms.push({ e: a.elem, p: S.X[i].slice() }));
   S.atoms.forEach((a, i) => a.bonds.forEach((j, k) => { if (i < j) m.bonds.push({ a: i, b: j, o: a.bondOrder?.[k] || 1 }); }));
   BS.baseName = S.cur ? (S.cur.ja || S.cur.p.Title || '') : '';
+  BS.name = ''; $('#bName').value = '';
   return m;
 }
 function ensureBuilder() {
@@ -1504,7 +1538,7 @@ function showBuilt({ resetView = false, mmff = false } = {}) {
   S.mol = mol; S.mol0 = mol ? mol.getCompactCopy() : null; S.sdf = molfile;
   S.cur = {
     cid: null, ja: null, desc: '自作した分子', qid: null, source: 'built',
-    p: { Title: BS.baseName ? `${BS.baseName}（編集）` : '新しい分子', MolecularFormula: hill(counts), MolecularWeight: Builder.weight(m), SMILES: smiles }
+    p: { Title: builtTitle(), MolecularFormula: hill(counts), MolecularWeight: Builder.weight(m), SMILES: smiles }
   };
   S.E = mol ? energyOf(mol) : null; S.Emin = null;
   S.Elabel = usedMMFF ? '自作分子（MMFF94s で最適化）' : '自作分子（簡易力場で整形）';
@@ -1632,7 +1666,7 @@ function bindBuilder() {
 
   $('#bNew').addEventListener('click', () => {
     S.token++; setBusy(false);
-    BS.mol = Builder.empty(); BS.undo = []; BS.redo = []; BS.baseName = '';
+    BS.mol = Builder.empty(); BS.undo = []; BS.redo = []; BS.baseName = ''; BS.name = ''; $('#bName').value = '';
     S.cur = { source: 'built', p: {} };
     showBuilt();
     setClick('build');
@@ -1679,6 +1713,160 @@ function bindBuilder() {
     const t = performance.now();
     setTimeout(() => { if (S.atomClickT < t - 5) emptyClick(e.clientX, e.clientY); }, 60);
   });
+}
+
+// 角度のスライダー（値は下に表示し、手入力はしない）
+function angleSlider(label, note, attr, min, max, val) {
+  return `<div class="angle"><div class="sc-head"><span>${label}</span><small>${note}</small></div>
+    <input type="range" ${attr} min="${min}" max="${max}" step="1" value="${Math.round(val)}" aria-label="${label}">
+    <output class="sc-value">${Math.round(val)}°</output></div>`;
+}
+
+/* ===== 作った分子の名前と保存 ===== */
+const builtTitle = () => BS.name || (BS.baseName ? `${BS.baseName}（編集）` : '新しい分子');
+const savedList = () => store.get('ml.saved', []);
+
+function setBuiltName(name) {
+  BS.name = name;
+  $('#bName').value = name;
+  if (S.cur?.source === 'built') { S.cur.p.Title = builtTitle(); renderInfo(); }
+}
+
+function saveBuilt() {
+  ensureBuilder();
+  if (!BS.mol.atoms.length) { toast('保存する原子がありません', '', 'err'); return; }
+  if (S.cur?.source !== 'built') showBuilt();
+  const name = $('#bName').value.trim() || builtTitle();
+  setBuiltName(name);
+  const list = savedList();
+  const entry = { id: Date.now(), name, formula: hill(Builder.counts(BS.mol)), molfile: Builder.toMolfile(BS.mol), date: new Date().toISOString() };
+  const k = list.findIndex((x) => x.name === name);
+  if (k >= 0) list.splice(k, 1);
+  list.unshift(entry);
+  store.set('ml.saved', list.slice(0, 100));
+  renderSaved();
+  toast(k >= 0 ? '上書き保存しました' : '保存しました', name, 'ok');
+}
+
+function loadSaved(id) {
+  const e = savedList().find((x) => x.id === id);
+  if (!e) return;
+  S.token++;
+  BS.mol = Builder.fromMolfile(e.molfile); BS.undo = []; BS.redo = []; BS.baseName = '';
+  setBuiltName(e.name);
+  showBuilt({ resetView: true });
+}
+
+function exportMolfile() {
+  ensureBuilder();
+  if (!BS.mol.atoms.length) return;
+  const name = $('#bName').value.trim() || builtTitle();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([`${name}\n` + Builder.toMolfile(BS.mol).split('\n').slice(1).join('\n')], { type: 'chemical/x-mdl-molfile' }));
+  a.download = `${name}.mol`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function renderSaved() {
+  const list = savedList();
+  const html = list.length ? list.map((e) => `<div class="item click" data-load="${e.id}">
+      <div class="hd"><b>${esc(e.name)}</b><span class="r"><span class="formula">${subFormula(e.formula)}</span>
+      <button class="mini-btn danger" data-del="${e.id}" aria-label="${esc(e.name)} を削除">削除</button></span></div>
+      <div class="sub">${new Date(e.date).toLocaleString('ja-JP', { dateStyle: 'medium', timeStyle: 'short' })}</div></div>`).join('')
+    : '<div class="item"><div class="sub" style="margin:0">保存した分子はまだありません</div></div>';
+  $('#savedList').innerHTML = html;
+  $('#savedList').querySelectorAll('[data-load]').forEach((el) => el.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-del]')) return;
+    loadSaved(+el.dataset.load);
+  }));
+  $('#savedList').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => {
+    store.set('ml.saved', savedList().filter((x) => x.id !== +b.dataset.del));
+    renderSaved();
+  }));
+  if (curView === 'saved') renderSide();
+}
+
+/* ===== メソ体・鏡像異性体への変換 ===== */
+// 不斉中心の組み合わせを変えてメソ体になるものを探し、対称性が見える配座で表示する
+async function convertToMeso() {
+  if (!S.mol || !hasOCL()) return;
+  const M = OCL.Molecule;
+  if (S.chir === M.cChiralityMeso) { toast('すでにメソ体です', ''); return; }
+  const base = S.mol.getCompactCopy();
+  base.ensureHelperArrays(M.cHelperParities);
+  const centers = [];
+  for (let i = 0; i < base.getAllAtoms(); i++) if (base.isAtomStereoCenter(i)) centers.push(i);
+  if (centers.length < 2) { toast('メソ体はとれません', '不斉中心が 2 つ以上必要です。'); return; }
+  await withBusy('メソ体を探しています', async () => {
+    const n = Math.min(centers.length, 10);
+    const masks = [...Array((1 << n) - 1).keys()].map((k) => k + 1).sort((a, b) => bitCount(a) - bitCount(b));
+    let smiles = null;
+    for (const mask of masks) {
+      const c = base.getCompactCopy();
+      c.ensureHelperArrays(M.cHelperParities);
+      for (let k = 0; k < n; k++) if (mask & (1 << k)) c.setAtomParity(centers[k], c.getAtomParity(centers[k]) === 1 ? 2 : 1, false);
+      c.setParitiesValid(0);
+      const smi = c.toIsomericSmiles();
+      const m2 = M.fromSmiles(smi);
+      m2.ensureHelperArrays(M.cHelperCIP);
+      if ((m2.getChirality() & 0xFF0000) === M.cChiralityMeso) { smiles = smi; break; }
+    }
+    if (!smiles) { toast('メソ体はとれません', '不斉中心の組み合わせを変えても、分子内に対称性が生まれません。'); return; }
+    const conf = await symmetricConformer(M.fromSmiles(smiles));
+    const mol = conf.mol;
+    const name = (S.cur?.ja || S.cur?.p?.Title || '分子').replace(/（.*）$/, '');
+    replaceWithBuilt(mol, `${name}（メソ体）`);
+    // OH や CH₃ の向きは対称性を崩しやすいので、水素を除いて対称要素を示す
+    S.set.symNoH = true; $('#tSymH').checked = true; saveSettings();
+    S.symShow = true; runSymmetry(true); $('#symFind span').textContent = '検出結果を消す';
+    toast('メソ体に変えました', conf.sym ? `対称要素を緑で示しています（この配座は最も安定な配座より ${conf.dE.toFixed(1)} kcal/mol 高い）。` : '対称性の見える配座は見つかりませんでした。結合を回すと対称面が現れます。', 'ok');
+  });
+}
+const bitCount = (x) => { let c = 0; while (x) { c += x & 1; x >>= 1; } return c; };
+
+// 配座をいくつか作り、対称面か対称心をもつもの（なければ最も安定なもの）を選ぶ
+async function symmetricConformer(mol) {
+  const cg = new OCL.ConformerGenerator(7);
+  if (!cg.initializeConformers(mol, { strategy: OCL.ConformerGenerator.STRATEGY_LIKELY_RANDOM, maxTorsionSets: 80 })) throw new Error('3D 座標を生成できません');
+  const confs = [];
+  for (let k = 0; k < 24; k++) {
+    const m = cg.getNextConformerAsMolecule(null);
+    if (!m) break;
+    const E = minimise(m) ?? 0;
+    const X = getXYZ(m);
+    const heavy = X.map((p, i) => ({ e: m.getAtomLabel(i), p })).filter((a) => a.e !== 'H');
+    const sym = Chem.findSymmetry(heavy, 0.25);
+    confs.push({ m, E, sym: sym.planes.length > 0 || sym.inversion != null });
+    await sleep(0);
+  }
+  if (!confs.length) throw new Error('3D 座標を生成できません');
+  // 対称性を見せるのが目的なので、対称な配座があればその中で最も安定なものを選ぶ（最安定配座とは限らない）
+  const Emin = Math.min(...confs.map((c) => c.E));
+  const best = confs.filter((c) => c.sym).sort((a, b) => a.E - b.E)[0] || confs.sort((a, b) => a.E - b.E)[0];
+  return { mol: best.m, dE: best.E - Emin, sym: best.sym };
+}
+
+function replaceWithBuilt(mol, name) {
+  S.token++;
+  if (S.cur?.source === 'built' && BS.mol.atoms.length) BS.undo.push(Builder.clone(BS.mol));
+  BS.mol = Builder.fromMolfile(mol.toMolfile());
+  BS.redo = []; BS.baseName = '';
+  setBuiltName(name);
+  showBuilt({ resetView: true });
+}
+
+// 鏡に映した構造（すべての不斉中心が反転する）
+function convertToMirror() {
+  if (!S.atoms.length) return;
+  const name = (S.cur?.ja || S.cur?.p?.Title || '分子').replace(/（.*）$/, '');
+  ensureBuilder();
+  BS.undo.push(Builder.clone(BS.mol));
+  BS.mol.atoms.forEach((a) => { a.p[0] = -a.p[0]; });
+  BS.redo = []; BS.baseName = '';
+  setBuiltName(`${name}（鏡像異性体）`);
+  showBuilt();
+  toast('鏡像異性体に変えました', '');
 }
 
 /* ===== ホーム画面に追加（PWA） ===== */
@@ -1734,6 +1922,12 @@ initViewer();
 bind();
 bindBuilder();
 setupInstall();
+renderSaved();
+$('#bName').addEventListener('input', (e) => setBuiltName(e.target.value));
+$('#bSave').addEventListener('click', saveBuilt);
+$('#bExport').addEventListener('click', exportMolfile);
+$('#toMeso').addEventListener('click', convertToMeso);
+$('#toMirror').addEventListener('click', convertToMirror);
 renderSide();
 requestAnimationFrame(labelLoop);
 if (!hasOCL()) toast('OpenChemLib を読み込めませんでした', '立体化学・配座の機能は使えません（表示は可能）。', 'err');

@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Molecule">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=202611020920-2513c2c">
+<link rel="stylesheet" href="style.css?v=202611021223-a0677cb">
 <script>
   // Mac アプリ（Electron）として開いたときは、ウインドウの枠を内容に合わせる
   if (/Electron\//.test(navigator.userAgent)) document.documentElement.classList.add('app');
@@ -26,10 +26,10 @@
     ['https://cdn.jsdelivr.net/npm/openchemlib@8.21.0/dist/openchemlib-full.js', 'vendor/openchemlib-full.js']
   ]) document.write(`<script src="${location.protocol === 'file:' ? local : cdn}" defer><\/script>`);
 </script>
-<script src="chem.js?v=202611020920-2513c2c" defer></script>
-<script src="builder.js?v=202611020920-2513c2c" defer></script>
-<script src="glass.js?v=202611020920-2513c2c" defer></script>
-<script src="app.js?v=202611020920-2513c2c" defer></script>
+<script src="chem.js?v=202611021223-a0677cb" defer></script>
+<script src="builder.js?v=202611021223-a0677cb" defer></script>
+<script src="glass.js?v=202611021223-a0677cb" defer></script>
+<script src="app.js?v=202611021223-a0677cb" defer></script>
 </head>
 <body>
 <svg id="lgDefs" width="0" height="0" aria-hidden="true" style="position:absolute"></svg>
@@ -116,6 +116,7 @@
       <button class="nv on" data-view="comp"><span class="tile t-blue"><svg><use href="#i-grid"/></svg></span>組成</button>
       <button class="nv" data-view="samples"><span class="tile t-orange"><svg><use href="#i-flask"/></svg></span>ライブラリ</button>
       <button class="nv" data-view="history"><span class="tile t-indigo"><svg><use href="#i-clock"/></svg></span>履歴</button>
+      <button class="nv" data-view="saved"><span class="tile t-green"><svg><use href="#i-addhome"/></svg></span>保存した分子</button>
       <button class="nv" data-view="about"><span class="tile t-gray"><svg><use href="#i-info"/></svg></span>このアプリについて</button>
     </nav>
     <div class="sidelist" id="sidelist"></div>
@@ -217,9 +218,14 @@
 
     <!-- 作成 -->
     <div class="pane" data-pane="build">
-      <div class="btnrow">
-        <button class="btn gray" type="button" id="bNew"><svg><use href="#i-plus"/></svg>新規</button>
-        <button class="btn gray" type="button" id="bFromCur"><svg><use href="#i-hand"/></svg>表示中の分子を編集</button>
+      <div class="group">
+        <label class="row field-row"><span>名前</span><input class="inline-input wide" id="bName" placeholder="新しい分子" autocomplete="off" enterkeyhint="done"></label>
+      </div>
+      <div class="group actions">
+        <button class="row action" type="button" id="bNew"><svg><use href="#i-plus"/></svg><span>新しい分子</span></button>
+        <button class="row action" type="button" id="bFromCur"><svg><use href="#i-hand"/></svg><span>表示中の分子を編集</span></button>
+        <button class="row action" type="button" id="bSave"><svg><use href="#i-addhome"/></svg><span>保存</span></button>
+        <button class="row action" type="button" id="bExport"><svg><use href="#i-share"/></svg><span>.mol ファイルに書き出す</span></button>
       </div>
       <h3>ツール</h3>
       <div class="seg icons" id="toolSeg" data-lens>
@@ -245,14 +251,21 @@
         <label class="row tg"><span>水素を自動で補う</span><input type="checkbox" id="bAutoH" checked><span class="sw"></span></label>
         <label class="row tg"><span>編集のたびに形を整える</span><input type="checkbox" id="bAutoRelax" checked><span class="sw"></span></label>
       </div>
-      <div class="btnrow">
-        <button class="btn gray icon-only" type="button" id="bUndo" title="取り消す"><svg><use href="#i-undo"/></svg></button>
-        <button class="btn gray icon-only" type="button" id="bRedo" title="やり直す"><svg><use href="#i-redo"/></svg></button>
-        <button class="btn gray" type="button" id="bFillH">水素を補う</button>
-        <button class="btn gray" type="button" id="bStripH">水素を外す</button>
-        <button class="btn filled" type="button" id="bClean"><svg><use href="#i-wand"/></svg>形を整える</button>
+      <h3>操作</h3>
+      <div class="group actions">
+        <div class="row split">
+          <button class="action" type="button" id="bUndo"><svg><use href="#i-undo"/></svg><span>取り消す</span></button>
+          <button class="action" type="button" id="bRedo"><svg><use href="#i-redo"/></svg><span>やり直す</span></button>
+        </div>
+        <div class="row split">
+          <button class="action" type="button" id="bFillH"><svg><use href="#i-plus"/></svg><span>水素を補う</span></button>
+          <button class="action" type="button" id="bStripH"><svg><use href="#i-minus"/></svg><span>水素を外す</span></button>
+        </div>
       </div>
+      <button class="btn filled block" type="button" id="bClean"><svg><use href="#i-wand"/></svg>形を整える</button>
       <div class="group status" id="buildStatus"></div>
+      <h3>保存した分子</h3>
+      <div class="list" id="savedList"></div>
     </div>
 
     <!-- 立体 -->
@@ -260,26 +273,35 @@
       <h3>立体配置</h3>
       <div class="verdict" id="chirVerdict">—</div>
       <div class="list" id="stereoList"></div>
+      <div class="group actions">
+        <button class="row action" type="button" id="toMeso"><svg><use href="#i-mirror"/></svg><span>メソ体に変える</span></button>
+        <button class="row action" type="button" id="toMirror"><svg><use href="#i-swap"/></svg><span>鏡像異性体に変える</span></button>
+      </div>
+      <p class="footnote">メソ体をとれる組み合わせがあれば、その立体配置に変えて対称性の見える配座で表示します。</p>
+
       <h3>この配座の対称性</h3>
-      <div class="group">
+      <div class="group actions">
+        <button class="row action" type="button" id="symFind"><svg><use href="#i-sparkle"/></svg><span>対称面と対称心を探す</span></button>
         <label class="row tg"><span>水素を除いて判定</span><input type="checkbox" id="tSymH"><span class="sw"></span></label>
       </div>
-      <p class="footnote">全原子を実際に鏡映・反転して重なるかを判定します（許容誤差 <span id="tolVal">0.20</span> Å）。水素を除くと OH・CH₃ の向きを無視できます。</p>
-      <div class="btnrow"><button class="btn tinted" type="button" id="symFind">対称面を自動検出</button></div>
       <div class="verdict sm" id="symVerdict"></div>
-      <h3>平面の作図</h3>
-      <p class="footnote">下のバーで「平面」を選び、原子を3つ以上クリックして「平面を作成」。4つ以上は最小二乗平面です。各平面が鏡映面かどうかも判定します。</p>
-      <div class="btnrow">
-        <button class="btn gray toggle" type="button" id="planeMode">作図モード</button>
-        <button class="btn filled" type="button" id="planeMake" disabled>平面を作成</button>
-        <button class="btn gray" type="button" id="planeSelClear">選択解除</button>
-      </div>
-      <div class="group">
-        <label class="row tg"><span>同一平面上の原子を強調</span><input type="checkbox" id="tPlaneMark" checked><span class="sw"></span></label>
-      </div>
-      <p class="footnote">平面からの距離 |d| が 0.02 Å 以下の原子を同一平面上とみなし、選んだ原子以外も平面と同じ色の輪で囲みます。計算で求めた構造では、対称性から厳密に同一平面に乗る原子でも数値誤差で 0.02 Å 程度ずれるためです（外れた原子は通常 0.3 Å 以上離れています）。原子を3つ選んだ時点で、点線の輪で予告します。</p>
+      <p class="footnote">全原子を鏡映・反転し、0.2 Å 以内で重なるかを調べます。水素を除くと OH や CH₃ の向きを無視できます。</p>
+
+      <h3>対称要素を作る</h3>
+      <p class="footnote lead">下のバーで「平面」を選び、原子をタップして選びます。</p>
       <div class="chips" id="planeSel"></div>
+      <div class="group actions">
+        <button class="row action" type="button" data-mk="plane3"><svg><use href="#i-plane"/></svg><span>3原子を通る平面</span><small>3つ以上</small></button>
+        <button class="row action" type="button" data-mk="bisect"><svg><use href="#i-mirror"/></svg><span>2原子の垂直二等分面</span><small>2つ</small></button>
+        <button class="row action" type="button" data-mk="pmid"><svg><use href="#i-scope"/></svg><span>2原子の中点に対称心</span><small>2つ</small></button>
+        <button class="row action" type="button" data-mk="pcen"><svg><use href="#i-atom"/></svg><span>分子の重心に対称心</span></button>
+        <button class="row action danger" type="button" id="planeSelClear"><svg><use href="#i-xmark"/></svg><span>選択を解除</span></button>
+      </div>
       <div class="list" id="planeList"></div>
+      <div class="group">
+        <label class="row tg"><span>面上の原子を強調</span><input type="checkbox" id="tPlaneMark" checked><span class="sw"></span></label>
+      </div>
+      <p class="footnote">平面から 0.02 Å 以内の原子を面上とみなし、平面と同じ色の輪で囲みます。</p>
       <div class="size-list"><div id="planeOpacityRow"></div></div>
     </div>
 
@@ -290,11 +312,11 @@
       <h3>環の配座（Cremer–Pople 解析）</h3>
       <div class="list" id="ringList"></div>
       <h3>配座探索</h3>
-      <p class="footnote">OpenChemLib で配座を発生させ、MMFF94s 力場で最適化してエネルギー順に並べます。</p>
-      <div class="btnrow">
-        <button class="btn filled" type="button" id="confSearch">配座を探索</button>
-        <button class="btn gray" type="button" id="confMin">現在の配座を最適化</button>
-        <button class="btn gray" type="button" id="confReset">初期配座に戻す</button>
+      <p class="footnote lead">配座を発生させて MMFF94s で最適化し、エネルギーの低い順に並べます。</p>
+      <div class="group actions">
+        <button class="row action" type="button" id="confSearch"><svg><use href="#i-search"/></svg><span>配座を探索</span></button>
+        <button class="row action" type="button" id="confMin"><svg><use href="#i-wand"/></svg><span>今の配座を最適化</span></button>
+        <button class="row action" type="button" id="confReset"><svg><use href="#i-undo"/></svg><span>はじめの配座に戻す</span></button>
       </div>
       <div class="list" id="confList"></div>
     </div>
@@ -304,8 +326,8 @@
       <p class="footnote">下のバーで「計測」を選び、原子をクリック：2つで距離、3つで結合角、4つで二面角。4原子を選ぶと中央の単結合を回せます（重なり形にするとメソ体の対称面が現れます）。</p>
       <div class="chips" id="mSel"></div>
       <div class="mres" id="mRes"></div>
-      <div class="group sliders" id="dihCtl"></div>
-      <div class="btnrow"><button class="btn gray" type="button" id="mClear">選択をクリア</button></div>
+      <div id="dihCtl"></div>
+      <div class="group actions"><button class="row action danger" type="button" id="mClear"><svg><use href="#i-xmark"/></svg><span>選択を解除</span></button></div>
     </div>
 
     <!-- 情報 -->

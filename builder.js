@@ -231,6 +231,22 @@ const Builder = (() => {
     lines.push('M  END');
     return lines.join('\n');
   }
+  // V2000 モルファイルを読み込む（保存した分子・メソ体への変換に使う）
+  function fromMolfile(text) {
+    const L = text.split(/\r?\n/);
+    const na = parseInt(L[3].slice(0, 3)), nb = parseInt(L[3].slice(3, 6));
+    const m = empty();
+    for (let i = 0; i < na; i++) {
+      const l = L[4 + i];
+      m.atoms.push({ e: l.slice(31, 34).trim(), p: [parseFloat(l.slice(0, 10)), parseFloat(l.slice(10, 20)), parseFloat(l.slice(20, 30))] });
+    }
+    for (let i = 0; i < nb; i++) {
+      const l = L[4 + na + i];
+      const o = parseInt(l.slice(6, 9));
+      m.bonds.push({ a: parseInt(l.slice(0, 3)) - 1, b: parseInt(l.slice(3, 6)) - 1, o: o >= 1 && o <= 3 ? o : 1 });
+    }
+    return m;
+  }
   function counts(m) {
     const c = {};
     for (const a of m.atoms) c[a.e] = (c[a.e] || 0) + 1;
@@ -241,7 +257,7 @@ const Builder = (() => {
   const strained = (m) => m.atoms.map((a, i) => (orderSum(m, i) > (MAXV[a.e] ?? 8) ? i : -1)).filter((i) => i >= 0);
 
   return {
-    COV, STD, MAXV, empty, clone, nbrs, orderSum, findBond, addAtom, attach, setBond, deleteAtoms,
+    COV, STD, MAXV, empty, clone, fromMolfile, nbrs, orderSum, findBond, addAtom, attach, setBond, deleteAtoms,
     fillHydrogens, fillAllHydrogens, removeAllHydrogens, hydrogensOf, normalize, relax, toMolfile, counts, weight, strained
   };
 })();
