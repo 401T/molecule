@@ -335,7 +335,10 @@ function drawPlane(P, colorHex, grid, given) {
 // 全体が収まるように表示し、小さな分子は 1 Å ≒ 60 px までに抑える
 function fitView() {
   viewer.zoomTo();
-  viewer.zoom(0.9);
+  // キャンバスは画面全体より大きいので、実際に見えている領域に収まるよう縮める
+  const can = $('#viewer').getBoundingClientRect(), vis = $('#visArea').getBoundingClientRect();
+  const fit = Math.min(1, vis.width / (can.width || 1), vis.height / (can.height || 1));
+  viewer.zoom(0.9 * (fit || 1));
   const ax = viewAxes();
   const a = viewer.modelToScreen(v(ax.center)), b = viewer.modelToScreen(v(Chem.add(ax.center, ax.right)));
   const ppa = Math.hypot(b.x - a.x, b.y - a.y);
