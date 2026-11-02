@@ -11,7 +11,7 @@
     "start": "electron .",
     "build:mac": "electron-packager . Molecule --platform=darwin --arch=arm64 --icon=desktop/icon.icns --app-bundle-id=io.github.401t.molecule --app-category-type=public.app-category.education --out=dist --overwrite --ignore=^/dist --ignore=^/\\.git --ignore=^/README.md --ignore=^/icon.svg --ignore=^/apple-touch-icon.png --ignore=^/icon-.*\\.png --ignore=^/sw.js --ignore=^/scripts --ignore=^/manifest.webmanifest",
     "stamp": "node scripts/stamp.mjs",
-    "prebuild:mac": "find dist -name .DS_Store -delete 2>/dev/null || true"
+    "prebuild:mac": "rm -rf dist/Molecule-darwin-arm64"
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",
